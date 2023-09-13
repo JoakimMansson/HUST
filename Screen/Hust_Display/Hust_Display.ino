@@ -1,8 +1,9 @@
 #include "Platform.h"
 #include "App_Common.h"
 #include "Functions.h"
-#include <Wire.h>
 #include "buffer.h"
+#include "Serial_CAN_FD.h"
+
 #define BUTTON_SWITCH_SCREEN_PIN 4
 #define ORANGE_BUTTON_7 7
 #define YELLOW_BUTTON_6 6
@@ -19,10 +20,6 @@
 
 //Saved
 /* In Functions.cpp the functions wirtten written beyond riverdi github can be found*/
-
-
-/*----- I2C ECU --------*/
-/* Transmit on channel 9 and receive on channel 10*/
 
 
 /* Global used for buffer optimization */
@@ -106,7 +103,7 @@ int driving_mode_counter = 2;
 int cruise_control_velocity = 100;
 
 
-bool intro = true;
+bool in_start_screen = true;
 bool data_received_flag = false;
 bool update_screen_flag = true;
 bool start_screen_flag = true;
@@ -130,23 +127,28 @@ bool potentiometer_flag = false;
 
 String global_data = "";
 
-
-/* setup */
-void setup() {
-  phost = &host;
-  SPI.begin();
-  //Wire.begin(8);
-  //Wire.onReceive(i2c_potentials);
-  /* Init HW Hal */
-  App_Common_Init(&host);
-  Serial.begin(19200);
-  init_buttons();
-
-
-  Wire.begin(8);
-  Wire.onRequest(i2c_request);
-  Wire.onReceive(I2C_receive);
+/* ------------------- CAN ------------------- */
+void uart_init(unsigned long baudrate)
+{
+    uart_can.begin(baudrate);
 }
+
+void uart_write(unsigned char c)
+{
+    uart_can.write(c);
+}
+
+unsigned char uart_read()
+{
+    return uart_can.read();
+}
+
+int uart_available()
+{
+    return uart_can.available();
+}
+
+/* ------------------- /CAN ------------------- */
 
 
 void i2c_request() {
@@ -180,58 +182,6 @@ void i2c_request() {
   //Wire.endTransmission();
 }
 
-
-
-/* On receive function */
-void i2c_potentials() {
-  String data_received_String = "";
-  while (Wire.available()) {
-    char char_received = Wire.read();
-    //data_received_i2c_channel_10 += char_received;
-  }
-  //global_data = data;
-  //data_received_flag = true;
-  //Serial.println(data_received_i2c_channel_10);
-
-  //i2c_data_handler(data);
-}
-
-void I2C_receive() 
-{
-  String data = "";
-  String data_segment = "";
-  while(Wire.available()) // To read in data backwards (1744 18 0 0 5 188 0 199 114) -> (114 199 0 188 5 0 0 18 1744)
-  {
-    char c = Wire.read();
-    if(c == ' ')
-    {
-      data += data_segment + ' ';
-      data_segment = "";
-    }
-    else
-    {
-      data_segment += c;
-    }
-  }
-
-  String ID = "";
-  for(int i = 0; i < data.length(); i++)
-  {    
-    String c = data.substring(i, i+1);
-    if(c != " ")
-    {
-      ID += c;
-    }
-    else
-    {
-      data = data.substring(i+1);
-      break;
-    }
-  }
-  Serial.println("--------------");
-  Serial.println(ID + " " + data);
-  update_data(ID, data);  
-}
 
 
 /* This funciton activates the flag when high_voltage is off and drving mode is not neutral*/
@@ -301,13 +251,28 @@ void update_minmax_potentials(float mean, int identifier) {
   }
 }
 
+/* setup */
+void setup() {
+  phost = &host;
+  SPI.begin();
+  //Wire.begin(8);
+  //Wire.onReceive(i2c_potentials);
+  /* Init HW Hal */
+  App_Common_Init(&host);
+  Serial.begin(9600);
+  init_buttons();
+
+  uart_init(9600);
+  can_speed_20(500000);          // set can bus baudrate to 500k
+}
+
 
 /* loop */
 void loop() {
   /* Show Bridgetek logo */
-  if (intro) {
+  if (in_start_screen) {
     //App_Show_Logo(&host);
-    intro = false;
+    in_start_screen = false;
     Serial.println("Start");
     //start_screen();
   }
@@ -346,27 +311,10 @@ void loop() {
   }
   
 
-  /* Handle new data received from i2c */
-  if(data_received_flag && start_screen_flag) {
-    i2c_data_handler(global_data);
-    data_received_flag = false;
-    Serial.println("Data received");
-  }
-
   /* Update screen if flags */
   if(update_screen_flag && start_screen_flag) {
     start_screen();
     update_screen_flag = false;
-  }
-
-  /* Init the i2c communication on channel 10  and button*/  
-    if(init_i2c_channel_10) {
-    //This should pu start flag to true
-    //start_screen_flag = true;
-    //main_screen_flag = true;
-    //start_i2c_communication_channel_10();
-    //start_button_com();
-    init_i2c_channel_10 = false;
   }
 
   /*----- Switch Screen Button ----------*/
