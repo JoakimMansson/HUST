@@ -1,0 +1,981 @@
+WindowManager:
+
+    MainScreen:
+    DataDetailsScreen:
+
+
+<MainScreen>:
+    name: "Main"
+    size: root.width, root.height
+
+    lightMode: LightMode
+    goodLabel: goodLabel
+	badLabel: badLabel
+
+	loraStatusBTN: LoraStatusBTN
+	dataDetailsBTN: DataDetailsBTN
+
+	bmsPack: bmsPack
+	bmsCell: bmsCell
+	bmsFailsafes: bmsFailsafes
+	bmsTemperatures: bmsTemperatures
+
+	mcCurrentVoltage: mcCurrentVoltage
+	mcTemperatures: mcTemperatures
+	mcVelocity: mcVelocity
+	mcErrorFlags: mcErrorFlags
+	mcLimitFlags: mcLimitFlags
+
+    packCurrent: PackCurrent
+    packVoltage: PackVoltage
+    avgPackCurrent: AvgPackCurrent
+    packStateOfHealth: PackStateOfHealth
+    packStateOfCharge: StateOfCharge
+    lowCellVoltage: LowCellVoltage
+    highCellVoltage: HighCellVoltage
+    avgCellVoltage: AvgCellVoltage
+    voltageFailsafeActive: VoltageFailsafeActive
+    currentFailsafeActive: CurrentFailsafeActive
+    relayFailsafeActive: RelayFailsafeActive
+    cellBalancingActive: CellBalancingActive
+    changeinterlockFailsafeActive: ChangeinterlockFailsafeActive
+    thermistorB_valueTableInvalid: ThermistorB_valueTableInvalid
+    inputPowerSupplyFailed: InputPowerSupplyFailed
+    highestTemperature: HighestTemperature
+    lowestTemperature: LowestTemperature
+    averageTemperature: AverageTemperature
+    internalTemperature: InternalTemperature
+    busCurrent: BusCurrent
+    busVoltage: BusVoltage
+    heatsinkTemperature: HeatsinkTemperature
+    motorTemperature: MotorTemperature
+    motorVelocity: MotorVelocity
+    vehicleVelocity: VehicleVelocity
+    motorOverSpeed: MotorOverSpeed
+    desaturationFault: DesaturationFault
+    railUnderVoltage: RailUnderVoltage
+    configReadError: ConfigReadError
+    watchdogCausedLastReset: WatchdogCausedLastReset
+    badMotorPositionHallSequence: BadMotorPositionHallSequence
+    dCBusOverVoltage: DCBusOverVoltage
+    softwareOverCurrent: SoftwareOverCurrent
+    hardwareOverCurrent: HardwareOverCurrent
+    iPMTemperatureOrMotorTemperature: IPMTemperatureOrMotorTemperature
+    busVoltageLowerLimit: BusVoltageLowerLimit
+    busVoltageUpperLimit: BusVoltageUpperLimit
+    busCurrentLimit: BusCurrentLimit
+    velocity: Velocity
+    motorCurrent: MotorCurrent
+    outputVoltagePWM: OutputVoltagePWM
+
+
+    MDFloatLayout:
+        #md_bg_color: (0,0,0,1)
+
+        MDRoundFlatIconButton:
+            id: LightMode
+            text: "Darkmode"
+            icon: "weather-night"
+            #icon_color: "white"
+            text_color: "white"
+            line_color: (0/255, 109/255, 176/255)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.02, "y":0.92}
+            on_release: root.switch_theme_mode()
+
+        GridLayout:
+            size: root.width, root.height
+            pos_hint: {"x": -0.36, "y": 0}
+            row_force_default: True
+            row_default_height: 40
+            padding: ["50sp", "50sp"]
+            cols: 1
+            rows: 10
+
+#------------------ BMS PACK -------------------#
+
+            Label:
+                id: bmsPack
+                text: "BMS_Pack"
+                font_size: "20sp"
+                bold: True
+            
+
+            Label:
+                id: PackCurrent
+                text: "Pack_Current"
+                font_size: "15sp"
+
+            Label:
+                id: PackVoltage
+                text: "Pack_Voltage"
+                font_size: "15sp"
+
+            Label:
+                id: AvgPackCurrent
+                text: "Avg_Pack_Current"
+                font_size: "15sp"
+
+            Label:
+                id: PackStateOfHealth
+                text: "Pack_SOH"
+                font_size: "15sp"
+
+            Label:
+                id: StateOfCharge
+                text: "SOC"
+                font_size: "15sp"
+
+#------------------ BMS CELL -------------------#
+
+            Label:
+                id: bmsCell
+                text: "BMS_Cell"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: LowCellVoltage
+                text: "Low_Cell_Voltage"
+                font_size: "15sp"
+
+            Label:
+                id: HighCellVoltage
+                text: "High_Cell_Voltage"
+                font_size: "15sp"
+
+            Label:
+                id: AvgCellVoltage
+                text: "Avg_Cell_Voltage"
+                font_size: "15sp"
+            
+
+
+        GridLayout:
+            size: root.width, root.height
+            pos_hint: {"x": -0.18, "y": 0}
+            row_force_default: True
+            row_default_height: 40
+            padding: ["50sp", "50sp"]
+            cols: 1
+            rows: 13
+
+#------------------ BMS FAILSAFES -------------------#
+
+            Label:
+                id: bmsFailsafes
+                text: "BMS_Failsafes"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: VoltageFailsafeActive
+                text: "Voltage_Failsafe_Active"
+                font_size: "15sp"
+
+            Label:
+                id: CurrentFailsafeActive
+                text: "Current_Failsafe_Active"
+                font_size: "15sp"
+
+            Label:
+                id: RelayFailsafeActive
+                text: "Relay_Failsafe_Active"
+                font_size: "15sp"
+
+            Label:
+                id: CellBalancingActive
+                text: "Cell_Balancing_Active"
+                font_size: "15sp"
+
+            Label:
+                id: ChangeinterlockFailsafeActive
+                text: "Change_Interlock_Failsafe_Active"
+                font_size: "15sp"
+
+            Label:
+                id: ThermistorB_valueTableInvalid
+                text: "ThermistorB_valueTable_Invalid"
+                font_size: "15sp"
+
+            Label:
+                id: InputPowerSupplyFailed
+                text: "Input_Power_Supply_Failed"
+                font_size: "15sp"
+
+
+    #------------------ BMS TEMPERATURES -------------------#
+
+            Label:
+                id: bmsTemperatures
+                text: "BMS_Temperatures"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: HighestTemperature
+                text: "Highest_Temp"
+                font_size: "15sp"
+
+            Label:
+                id: LowestTemperature
+                text: "Lowest_Temp"
+                font_size: "15sp"
+
+            Label:
+                id: AverageTemperature
+                text: "Average_Temp"
+                font_size: "15sp"
+
+            Label:
+                id: InternalTemperature
+                text: "Internal_Temp"
+                font_size: "15sp"
+
+
+
+        
+        GridLayout:
+            size: root.width, root.height
+            pos_hint: {"x": 0, "y": 0}
+            row_force_default: True
+            row_default_height: 40
+            padding: ["50sp", "50sp"]
+            cols: 1
+            rows: 9
+
+#------------------ MC CURRENT & VOLTAGE -------------------#
+
+            Label:
+                id: mcCurrentVoltage
+                text: "MC_Current_Voltage"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: BusCurrent
+                text: "Bus_Current"
+                font_size: "15sp"
+
+            Label:
+                id: BusVoltage
+                text: "Bus_Voltage"
+                font_size: "15sp"
+
+
+    #------------------ MC TEMPERATURES -------------------#
+
+            Label:
+                id: mcTemperatures
+                text: "MC_Temperatures"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: HeatsinkTemperature
+                text: "Heatsink_Temp"
+                font_size: "15sp"
+
+            Label:
+                id: MotorTemperature
+                text: "Motor_Temp"
+                font_size: "15sp"
+
+
+    #------------------ MC Velocity -------------------#
+
+            Label:
+                id: mcVelocity
+                text: "MC_Velocity"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: MotorVelocity
+                text: "Motor_Velocity"
+                font_size: "15sp"
+
+            Label:
+                id: VehicleVelocity
+                text: "Vehicle_Velocity"
+                font_size: "15sp"
+
+
+        
+        GridLayout:
+            size: root.width, root.height
+            pos_hint: {"x": 0.18, "y": 0}
+            row_force_default: True
+            row_default_height: 40
+            padding: ["50sp", "50sp"]
+            cols: 1
+            rows: 18
+
+#------------------ MC ERRORFLAGS -------------------#
+
+            Label:
+                id: mcErrorFlags
+                text: "MC_Error_Flags"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: MotorOverSpeed
+                text: "Motor_Over_Speed"
+                font_size: "15sp"
+
+            Label:
+                id: DesaturationFault
+                text: "Desaturation_Fault"
+                font_size: "15sp"
+
+            Label:
+                id: RailUnderVoltage
+                text: "Rail_Under_Voltage"
+                font_size: "15sp"
+
+            Label:
+                id: ConfigReadError
+                text: "Config_Read_Error"
+                font_size: "15sp"
+
+            Label:
+                id: WatchdogCausedLastReset
+                text: "Watchdog_Caused_Last_Reset"
+                font_size: "15sp"
+
+            Label:
+                id: BadMotorPositionHallSequence
+                text: "Bad_Motor_Position_Hall_Sequence"
+                font_size: "15sp"
+
+            Label:
+                id: DCBusOverVoltage
+                text: "DC_Bus_Over_Voltage"
+                font_size: "15sp"
+
+            Label:
+                id: SoftwareOverCurrent
+                text: "Software_Over_Current"
+                font_size: "15sp"
+
+            Label:
+                id: HardwareOverCurrent
+                text: "Hardware_Over_Current"
+                font_size: "15sp"
+
+
+        
+        GridLayout:
+            size: root.width, root.height
+            pos_hint: {"x": 0.36, "y": 0}
+            row_force_default: True
+            row_default_height: 40
+            padding: ["50sp", "50sp"]
+            cols: 1
+            rows: 18
+
+#------------------ MC LIMITFLAGS -------------------#
+
+            Label:
+                id: mcLimitFlags
+                text: "MC_Limit_Flags"
+                font_size: "20sp"
+                bold: True
+
+            Label:
+                id: IPMTemperatureOrMotorTemperature
+                id: IPMTemperatureOrMotorTemperature
+                text: "IPM_OR_MOTOR_TEMP"
+                font_size: "15sp"
+
+            Label:
+                id: BusVoltageLowerLimit
+                text: "Bus_Voltage_Lower_Limit"
+                font_size: "15sp"
+
+            Label:
+                id: BusVoltageUpperLimit
+                text: "Bus_Voltage_Upper_Limit"
+                font_size: "15sp"
+
+            Label:
+                id: BusCurrentLimit
+                text: "Bus_Current_Limit"
+                font_size: "15sp"
+
+            Label:
+                id: Velocity
+                text: "Velocity"
+                font_size: "15sp"
+
+            Label:
+                id: MotorCurrent
+                text: "Motor_Current"
+                font_size: "15sp"
+
+            Label:
+                id: OutputVoltagePWM
+                text: "Output_Voltage_PWM"
+                font_size: "15sp"
+        
+
+        Image:
+            source: "HUST_logo.png"
+            size_hint: (1.0, 0.17)
+            pos_hint: {"x": 0, "y": 0.02}
+
+
+        MDRoundFlatIconButton:
+            id: LoraStatusBTN
+            text: "LoRa status"
+            icon: "satellite-uplink"
+            #icon_color: "white"
+            text_color: "white"
+            line_color: (0/255, 109/255, 176/255)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.02, "y":0.02}
+            on_release: root.show_lora_status()
+
+
+        MDRoundFlatIconButton:
+            id: DataDetailsBTN
+            text: "Data details"
+            icon: "database"
+            #icon_color: "white"
+            text_color: "white"
+            line_color: (0/255, 109/255, 176/255)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.14, "y":0.02}
+            on_release: 
+                root.manager.transition.direction = "left"
+                root.manager.current = "DataDetails"
+
+        MDRoundFlatIconButton:
+            id: goodLabel
+            text: "Good"
+            icon: "circle"
+            icon_color: (0/255, 109/255, 176/255, 1)
+            text_color: "white"
+            line_color: (0,0,0,0)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.90, "y":0.06}
+        
+        MDRoundFlatIconButton:
+            id: badLabel
+            text: "Bad"
+            icon: "circle"
+            icon_color: (176/255, 18/255, 0/255, 1)
+            text_color: "white"
+            line_color: (0,0,0,0)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.90, "y":0.02}
+
+#---------------------------------------DATA DETAILS SCREEN ----------------------------------#
+
+<DataDetailsScreen>:
+    name: "DataDetails"
+    size: root.width, root.height
+
+    allDataBTN: allDataBTN
+    dateRangeBTN: dateRangeBTN
+    sortBTN: sortBTN
+
+    packCurrent: PackCurrent
+    packVoltage: PackVoltage
+    avgPackCurrent: AvgPackCurrent
+    packStateOfHealth: PackStateOfHealth
+    packStateOfCharge: StateOfCharge
+    lowCellVoltage: LowCellVoltage
+    highCellVoltage: HighCellVoltage
+    avgCellVoltage: AvgCellVoltage
+    voltageFailsafeActive: VoltageFailsafeActive
+    currentFailsafeActive: CurrentFailsafeActive
+    relayFailsafeActive: RelayFailsafeActive
+    cellBalancingActive: CellBalancingActive
+    changeinterlockFailsafeActive: ChangeinterlockFailsafeActive
+    thermistorB_valueTableInvalid: ThermistorB_valueTableInvalid
+    inputPowerSupplyFailed: InputPowerSupplyFailed
+    highestTemperature: HighestTemperature
+    lowestTemperature: LowestTemperature
+    averageTemperature: AverageTemperature
+    internalTemperature: InternalTemperature
+    busCurrent: BusCurrent
+    busVoltage: BusVoltage
+    heatsinkTemperature: HeatsinkTemperature
+    motorTemperature: MotorTemperature
+    motorVelocity: MotorVelocity
+    vehicleVelocity: VehicleVelocity
+    motorOverSpeed: MotorOverSpeed
+    desaturationFault: DesaturationFault
+    railUnderVoltage: RailUnderVoltage
+    configReadError: ConfigReadError
+    watchdogCausedLastReset: WatchdogCausedLastReset
+    badMotorPositionHallSequence: BadMotorPositionHallSequence
+    dCBusOverVoltage: DCBusOverVoltage
+    softwareOverCurrent: SoftwareOverCurrent
+    hardwareOverCurrent: HardwareOverCurrent
+    iPMTemperatureOrMotorTemperature: IPMTemperatureOrMotorTemperature
+    busVoltageLowerLimit: BusVoltageLowerLimit
+    busVoltageUpperLimit: BusVoltageUpperLimit
+    busCurrentLimit: BusCurrentLimit
+    velocity: Velocity
+    motorCurrent: MotorCurrent
+    outputVoltagePWM: OutputVoltagePWM
+
+    MDFloatLayout:
+        #md_bg_color: (0,0,0,1)
+
+
+        MDRoundFlatIconButton:
+            id: allDataBTN
+            text: "All data"
+            icon: "arrow-left-top"
+            #icon_color: "white"
+            text_color: "white"
+            line_color: (0/255, 109/255, 176/255)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.04, "y":0.02}
+            on_release: 
+                root.manager.transition.direction = "right"
+                root.manager.current = "Main"
+
+        MDRoundFlatIconButton:
+            id: dateRangeBTN
+            text: "Date range: all-time"
+            icon: "all-inclusive"
+            #icon_color: "white"
+            text_color: "white"
+            line_color: (0/255, 109/255, 176/255)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.47, "y":0.85}
+            on_release: root.switch_date_range()
+
+        MDRoundFlatIconButton:
+            id: sortBTN
+            text: "Sorted: descending"
+            icon: "arrow-down"
+            #icon_color: "white"
+            text_color: "white"
+            line_color: (0/255, 109/255, 176/255)
+            size_hint: (0.1, 0.05)
+            pos_hint: {"x": 0.63, "y":0.85}
+            on_release: root.switch_sort()
+
+        Image:
+            source: "HUST_logo.png"
+            size_hint: (1.0, 0.17)
+            pos_hint: {"x": -0.38, "y": 0.82}
+
+        
+
+        ScrollView:
+            do_scroll_y: True
+            do_scroll_x: False
+            size_hint:(0.18, 0.6)
+            pos_hint: {"x": 0.05, "y":0.2}
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: "1800sp"
+                
+                #--------BMS PACK---------#
+                MDRectangleFlatButton:
+                    id: bmsPack
+                    text: "BMS_PACK"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+                    
+
+                MDRectangleFlatIconButton:
+                    id: PackCurrent
+                    icon: "battery"
+                    text: "Pack_Current"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(10)
+
+                MDRectangleFlatIconButton:
+                    id: PackVoltage
+                    icon: "battery"
+                    text: "Pack_Voltage"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(11)
+
+                MDRectangleFlatIconButton:
+                    id: AvgPackCurrent
+                    icon: "battery"
+                    text: "Avg_Pack_Current"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(13)
+
+                MDRectangleFlatIconButton:
+                    id: PackStateOfHealth
+                    icon: "battery-heart"
+                    text: "Pack_SOH"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(12)
+
+                MDRectangleFlatIconButton:
+                    id: StateOfCharge
+                    icon: "battery-charging-90"
+                    text: "Pack_SOC"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(14)
+
+                #--------BMS CELL---------#
+                MDRectangleFlatButton:
+                    id: bmsCell
+                    text: "BMS_CELL"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: LowCellVoltage
+                    icon: "battery-charging-low"
+                    text: "Low_Cell_Voltage"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(15)
+
+                MDRectangleFlatIconButton:
+                    id: HighCellVoltage
+                    icon: "battery-charging-high"
+                    text: "High_Cell_Voltage"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(16)
+
+                MDRectangleFlatIconButton:
+                    id: AvgCellVoltage
+                    icon: "battery-charging-50"
+                    text: "Avg_Cell_Voltage"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(17)
+
+                #--------BMS FAILSAFES---------#
+                MDRectangleFlatButton:
+                    id: bmsFailsafes
+                    text: "BMS_FAILSAFES"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: VoltageFailsafeActive
+                    icon: "flash-triangle"
+                    text: "Voltage_Failsafe_Active"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(18)
+
+                MDRectangleFlatIconButton:
+                    id: CurrentFailsafeActive
+                    icon: "flash-triangle"
+                    text: "Current_Failsafe_Active"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(19)
+
+                MDRectangleFlatIconButton:
+                    id: RelayFailsafeActive
+                    icon: "alert-circle"
+                    text: "Relay_Failsafe_Active"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(20)
+                
+                MDRectangleFlatIconButton:
+                    id: CellBalancingActive
+                    icon: "battery-minus-variant"
+                    text: "Cell_Balancing_Active"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(21)
+                
+                MDRectangleFlatIconButton:
+                    id: ChangeinterlockFailsafeActive
+                    icon: "alert-circle"
+                    text: "Change_Interlock_Failsafe_Active"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(22)
+
+                MDRectangleFlatIconButton:
+                    id: ThermistorB_valueTableInvalid
+                    icon: "power-plug-off"
+                    text: "ThermistorB_Value_Table_Invalid"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(23)
+
+                MDRectangleFlatIconButton:
+                    id: InputPowerSupplyFailed
+                    icon: "power-plug-off"
+                    text: "Input_Power_Supply_Failed"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(24)
+                
+                #--------BMS TEMPERATURES---------#
+                MDRectangleFlatButton:
+                    id: bmsTemperatures
+                    text: "BMS_TEMPERATURES"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: HighestTemperature
+                    icon: "thermometer-plus"
+                    text: "Highest_Temperature"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(25)
+
+                MDRectangleFlatIconButton:
+                    id: LowestTemperature
+                    icon: "thermometer-minus"
+                    text: "Lowest_Temperature"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(26)
+
+                MDRectangleFlatIconButton:
+                    id: AverageTemperature
+                    icon: "thermometer-auto"
+                    text: "Average_Temperature"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(27)
+
+                MDRectangleFlatIconButton:
+                    id: InternalTemperature
+                    icon: "thermometer-lines"
+                    text: "Internal_Temperature"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(28)
+
+                #--------MC CURRENT & VOLTAGE---------#
+                MDRectangleFlatButton:
+                    id: mcCurrentVoltage
+                    text: "MC_Current_Voltage"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: BusCurrent
+                    icon: "flash-auto"
+                    text: "Bus_Current"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(31)
+
+                MDRectangleFlatIconButton:
+                    id: BusVoltage
+                    icon: "flash"
+                    text: "Bus_Voltage"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(32)
+                
+                #--------MC TEMPERATURES---------#
+                MDRectangleFlatButton:
+                    id: mcTemperatures
+                    text: "MC_TEMPERATURES"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: MotorTemperature
+                    icon: "temperature-celsius"
+                    text: "Motor_Temperature"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(30)
+
+                MDRectangleFlatIconButton:
+                    id: HeatsinkTemperature
+                    icon: "thermometer-lines"
+                    text: "Heatsink_Temperature"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(29)
+
+                #--------MC VELOCITY---------#
+                MDRectangleFlatButton:
+                    id: mcVelocity
+                    text: "MC_VELOCITY"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: MotorVelocity
+                    icon: "engine-outline"
+                    text: "Motor_Velocity"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(33)
+
+                MDRectangleFlatIconButton:
+                    id: VehicleVelocity
+                    icon: "car-cruise-control"
+                    text: "Vehicle_Velocity"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(34)
+
+
+                #--------MC ERRORFLAGS---------#
+                MDRectangleFlatButton:
+                    id: mcErrorFlags
+                    text: "MC_Error_Flags"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: MotorOverSpeed
+                    icon: "engine-outline"
+                    text: "Motor_Over_Speed"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(35)
+
+                MDRectangleFlatIconButton:
+                    id: DesaturationFault
+                    icon: "alert-circle"
+                    text: "Desaturation_Fault"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(36)
+
+                MDRectangleFlatIconButton:
+                    id: RailUnderVoltage
+                    icon: "flash-triangle"
+                    text: "Rail_Under_Voltage"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(37)
+
+                MDRectangleFlatIconButton:
+                    id: ConfigReadError
+                    icon: "alert-circle"
+                    text: "Config_Read_Error"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(38)
+
+                MDRectangleFlatIconButton:
+                    id: WatchdogCausedLastReset
+                    icon: "dog-side"
+                    text: "Watchdog_Caused_Last_Reset"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(39)
+
+                MDRectangleFlatIconButton:
+                    id: BadMotorPositionHallSequence
+                    icon: "engine"
+                    text: "Bad_Motor_Position_Hall_Sequence"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(40)
+                
+                MDRectangleFlatIconButton:
+                    id: DCBusOverVoltage
+                    icon: "flash-triangle"
+                    text: "DC_Bus_Over_Voltage"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(41)
+
+                MDRectangleFlatIconButton:
+                    id: SoftwareOverCurrent
+                    icon: "current-ac"
+                    text: "Software_Over_Current"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(42)
+
+                MDRectangleFlatIconButton:
+                    id: HardwareOverCurrent
+                    icon: "current-ac"
+                    text: "Hardware_Over_Current"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(43)
+
+                #--------MC LIMITFLAGS---------#
+                MDRectangleFlatButton:
+                    id: mcLimitFlags
+                    text: "MC_Limit_Flags"
+                    text_color: (0/255, 109/255, 176/255)
+                    line_color: "white"
+
+                MDRectangleFlatIconButton:
+                    id: IPMTemperatureOrMotorTemperature
+                    icon: "thermometer-alert"
+                    text: "IPM_OR_MOTOR_TEMP"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(44)
+
+                MDRectangleFlatIconButton:
+                    id: BusVoltageLowerLimit
+                    icon: "battery-minus-outline"
+                    text: "Bus_Voltage_Lower_Limit"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(45)
+
+                MDRectangleFlatIconButton:
+                    id: BusVoltageUpperLimit
+                    icon: "battery-minus"
+                    text: "Bus_Voltage_Upper_Limit"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(46)
+
+                MDRectangleFlatIconButton:
+                    id: BusCurrentLimit
+                    icon: "flash-triangle"
+                    text: "Bus_Current_Limit"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(47)
+
+                MDRectangleFlatIconButton:
+                    id: Velocity
+                    icon: "speedometer-slow"
+                    text: "Velocity"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(48)
+
+                MDRectangleFlatIconButton:
+                    id: MotorCurrent
+                    icon: "current-ac"
+                    text: "Motor_Current"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(49)
+                
+                MDRectangleFlatIconButton:
+                    id: OutputVoltagePWM
+                    icon: "flash-triangle"
+                    text: "Output_Voltage_PWM"
+                    text_color: "white"
+                    line_color: "white"
+                    on_release: root.display_data(50)
+
+
+        
+
+
+
+
+
