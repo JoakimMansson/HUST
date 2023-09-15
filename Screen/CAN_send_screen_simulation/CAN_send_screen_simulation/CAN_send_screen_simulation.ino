@@ -1,4 +1,6 @@
 #include "Serial_CAN_FD.h"
+#include <SoftwareSerial.h>
+#include <stdio.h>
 
 #define BUTTON_SWITCH_SCREEN_PIN 4
 #define ORANGE_BUTTON_7 7
@@ -14,7 +16,15 @@
 #define __ext 0 //Extended CAN frame
 #define __rtr 0 // Data frame
 #define __fdf 0 // CAN 2.0 frame
+
+#define can_tx  8           // tx of serial can module connect to D2
+#define can_rx  9           // rx of serial can module connect to D3
+
+SoftwareSerial can_serial(can_tx, can_rx);
 #define uart_can can_serial
+
+const int BUFF_SIZE = 80;
+char CAN_SEND_ARR[BUFF_SIZE];
 
 
 int counter_gas = 0;
@@ -72,5 +82,13 @@ void setup() {
 }
 
 void loop() {
-  can_send(0x300, __ext, __rtr, __fdf, )
+  // Use snprintf to get the required length
+  int len = snprintf(NULL, 0, "%d", counter_gas);
+
+  // Add some extra space for null-terminator
+  len++; 
+
+  // Now you know the required length, you can use sprintf
+  snprintf(CAN_SEND_ARR, len, "%d", counter_gas);
+  can_send(0x300, __ext, __rtr, __fdf, len, CAN_SEND_ARR);
 }
