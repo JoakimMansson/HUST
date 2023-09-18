@@ -1,4 +1,3 @@
-#include <Wire.h>
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "Serial_CAN_FD.h"
@@ -480,12 +479,8 @@ void loop()
         Serial.print("LEN = ");
         Serial.println(__len);
         
-        for(int i=0; i<__len; i++)
-        {
-            Serial.print((char)__dta[i]);
-            Serial.print(' ');
-        }
-        Serial.println();
+
+        Serial.println(atoi(__dta));
     }
 
   //Serial.println("Doin loop");

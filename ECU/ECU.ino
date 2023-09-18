@@ -53,7 +53,7 @@ unsigned char BUS_VOLTAGE[8] = { 0, 0, 0, 0, 0, 0, 128, 63};
 
 bool inStartScreen = true;
 
-int drivingMode = 0; // 0: reversing, 1: driving, 2: neutral
+int drivingMode = 0; /* 0 = Neutral, 1 = Drive, 2 = Reverse */
 bool isNeutral = true;
 bool isDriving = false;
 bool isReversing = false;
@@ -178,14 +178,14 @@ void readPanel() {
     isReversing = false;
     isNeutral = false;
     return;
-  } else if (drivingMode == 0) {
+  } else if (drivingMode == 2) {
     isReversing = true;
 
     isDriving = false;
     isBraking = false;
     isNeutral = false;
     return;
-  } else if (drivingMode == 2) {
+  } else if (drivingMode == 0) {
     isNeutral = true;
 
     isBraking = false;

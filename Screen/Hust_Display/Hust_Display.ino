@@ -99,11 +99,11 @@ CircularBuffer break_buffer(10);
 int counter_gas = 0;
 int counter_break = 0;
 int pot_counter = 0;
-int driving_mode_counter = 2;
+int driving_mode_counter = 2; /*  */
 int cruise_control_velocity = 100;
 
 
-bool in_start_screen = true;
+bool in_start_screen = true; // IN START SCREEN
 bool data_received_flag = false;
 bool update_screen_flag = true;
 bool start_screen_flag = true;
@@ -117,8 +117,9 @@ bool solar_error_flag = true;
 bool driving_mode_error_flag = true;
 bool error_flag = true;
 bool cruise_control_flag = false;
-/*--- Eco 0 Race 1 ---*/
-bool eco_or_race_mode_flag = true;
+
+/*  */
+bool eco_or_race_mode_flag = true; /*--- Eco 0 Race 1 ---*/
 bool right_blinker_flag = false;
 bool left_blinker_flag = false;
 bool hazard_lights = false;
