@@ -3,8 +3,8 @@
 #include <SoftwareSerial.h>
 #include "Serial_CAN_FD.h"
 // LAPTOP
-#include "C:\Users\jocke\OneDrive\Skrivbord\GitHub\LoRa-communication\RAK811.h"
-#include "C:\Users\jocke\OneDrive\Skrivbord\GitHub\LoRa-communication\RAK811.cpp"
+#include "/home/joakim/Github/HUST/LoRa/RAK811.h"
+#include "/home/joakim/Github/HUST/LoRa/RAK811.cpp"
 
 // STATIONARY
 //#include "C:\Users\jocke\Desktop\GitStuff\LoRa-communication\RAK811.h"
@@ -482,28 +482,10 @@ void loop()
         
         for(int i=0; i<__len; i++)
         {
-            Serial.print(__dta[i]);
+            Serial.print((char)__dta[i]);
             Serial.print(' ');
         }
-        Serial.println();t
-
-        if (millis() - lastTimeLORASent >= 500) {
-          /*String msgToSend = convertCANMsgToLoRa(__id, __dta, __len);
-          debugln("Lora msg to send: " + msgToSend);
-          
-          char data[__len];
-          // make sure that the new string is null terminated
-          //data[__len] = '\0';
-
-          for (int i = 0; i < __len; i++) 
-          {
-              data[i] = __dta[i];
-          }
-          RAKLoRa.rk_sendP2PData(2, "100", data);
-          */
-          RAKLoRa.rk_sendP2PData(1, "10", "1337");
-          lastTimeLORASent = millis();
-        }
+        Serial.println();
     }
 
   //Serial.println("Doin loop");

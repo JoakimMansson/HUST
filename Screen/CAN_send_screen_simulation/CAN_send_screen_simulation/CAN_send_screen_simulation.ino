@@ -27,7 +27,7 @@ const int BUFF_SIZE = 80;
 char CAN_SEND_ARR[BUFF_SIZE];
 
 
-int counter_gas = 0;
+int counter_gas = 50;
 int counter_break = 0;
 int pot_counter = 0;
 int driving_mode_counter = 2;
@@ -79,16 +79,33 @@ void setup() {
 
   uart_init(9600);
   can_speed_20(500000);          // set can bus baudrate to 500k
+
+  unsigned long start_time = millis();
+  while (millis() - start_time < 5000) {}
 }
 
 void loop() {
   // Use snprintf to get the required length
-  int len = snprintf(NULL, 0, "%d", counter_gas);
+  //int len = snprintf(NULL, 0, "%d", counter_gas);
+  String to_send = String(counter_gas);
+  //sprintf(CAN_SEND_ARR, "%d", counter_gas);
+  //strcpy(CAN_SEND_ARR + strlen(CAN_SEND_ARR), "\0");
 
-  // Add some extra space for null-terminator
-  len++; 
+
+  int len;
+  /*
+  for (len = 0; len < BUFF_SIZE; len++) {
+    if (CAN_SEND_ARR == '\0') {
+      break;
+    }
+  }
+  */
+
+  len = to_send.length();
 
   // Now you know the required length, you can use sprintf
-  snprintf(CAN_SEND_ARR, len, "%d", counter_gas);
-  can_send(0x300, __ext, __rtr, __fdf, len, CAN_SEND_ARR);
+  can_send(0x300, __ext, __rtr, __fdf, len, to_send.c_str());
+  Serial.println("Length: " + String(len));
+  unsigned long start_time = millis();
+  while (millis() - start_time < 500) {}
 }
