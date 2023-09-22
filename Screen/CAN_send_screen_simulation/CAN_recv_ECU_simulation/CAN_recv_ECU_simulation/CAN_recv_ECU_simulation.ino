@@ -37,7 +37,7 @@ bool solar_error_flag = true;
 bool driving_mode_error_flag = true;
 bool error_flag = true;
 
-bool inCruiseControl = false;
+bool isCruising = false;
 bool inEcoOrRace = true; /*--- Eco 0 Race 1 ---*/
 bool activateRightBlinker = false;
 bool activateLeftBlinker = false;
@@ -89,21 +89,21 @@ void loop()
         Serial.println(__len);
         
         int CAN_data = atoi(__dta);
-        switch __id {
-          case 0x300: gas_potential = CAN_data break;
-          case 0x301: break_potential = CAN_data break;
-          case 0x302: drivingMode = CAN_data break;
-          case 0x303: isCruising = CAN_data break;
-          case 0x304: inEcoOrRace = CAN_data break;
-          case 0x305: inStartScreen = CAN_data break;
+        switch (__id) {
+          case 0x300: gasPotential = CAN_data; break;
+          case 0x301: breakPotential = CAN_data; break;
+          case 0x302: drivingMode = CAN_data; break;
+          case 0x303: isCruising = CAN_data; break;
+          case 0x304: inEcoOrRace = CAN_data; break;
+          case 0x305: inStartScreen = CAN_data; break;
           case 0x306: break;
-          case 0x307: activateRightBlinker = CAN_data break;
-          case 0x308: activateLeftBlinker = CAN_data break;
-          case 0x309: activateHazardLights = CAN_data break;
-          case 0x30a: activateHighBeam = CAN_data break;
+          case 0x307: activateRightBlinker = CAN_data; break;
+          case 0x308: activateLeftBlinker = CAN_data; break;
+          case 0x309: activateHazardLights = CAN_data; break;
+          case 0x30a: activateHighBeam = CAN_data; break;
           case 0x30b: break;
           case 0x30c: break;
         }
-        Serial.println(atoi(__dta));
+        Serial.println("Gas_potential: " + String(gasPotential));
     }
 }

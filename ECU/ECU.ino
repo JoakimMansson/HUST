@@ -514,8 +514,8 @@ void loop()
         CAN.readMsgBuf(&len, CAN_buf);
         String CAN_ID = String(CAN.getCanId());
         String CAN_data = "";
-        // print the data
-        for (int i = 0; i < len; i++) 
+        
+        for (int i = 0; i < len; i++)  // print the data
         {
            CAN_data += String(CAN_buf[i]) + ' ';
            //debug(CAN_buf[i]); debug("\t");

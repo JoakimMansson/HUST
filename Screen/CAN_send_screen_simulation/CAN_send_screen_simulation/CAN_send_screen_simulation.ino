@@ -54,6 +54,7 @@ bool hazard_lights = false;
 bool potentiometer_flag = false;
 
 /* ------------------- CAN ------------------- */
+
 void uart_init(unsigned long baudrate)
 {
     uart_can.begin(baudrate);
@@ -74,6 +75,10 @@ int uart_available()
     return uart_can.available();
 }
 
+/* ------------------- // CAN ------------------- */
+
+
+
 void setup() {
   Serial.begin(9600);
 
@@ -85,27 +90,32 @@ void setup() {
 }
 
 void loop() {
-  // Use snprintf to get the required length
-  //int len = snprintf(NULL, 0, "%d", counter_gas);
   String to_send = String(counter_gas);
-  //sprintf(CAN_SEND_ARR, "%d", counter_gas);
-  //strcpy(CAN_SEND_ARR + strlen(CAN_SEND_ARR), "\0");
+  int len = to_send.length();
 
-
-  int len;
-  /*
-  for (len = 0; len < BUFF_SIZE; len++) {
-    if (CAN_SEND_ARR == '\0') {
-      break;
-    }
-  }
-  */
-
-  len = to_send.length();
 
   // Now you know the required length, you can use sprintf
   can_send(0x300, __ext, __rtr, __fdf, len, to_send.c_str());
   Serial.println("Length: " + String(len));
-  unsigned long start_time = millis();
-  while (millis() - start_time < 500) {}
+
+
+  if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta))
+    {
+        Serial.print("GET DATA FROM: 0x");
+        Serial.println(__id, HEX);
+        Serial.print("EXT = ");
+        Serial.println(__ext);
+        Serial.print("RTR = ");
+        Serial.println(__rtr);
+        Serial.print("FDF = ");
+        Serial.println(__fdf);
+        Serial.print("LEN = ");
+        Serial.println(__len);
+        
+        int CAN_data = atoi(__dta);
+        switch (__id) {
+          case 1536: 
+        }
+        Serial.println("Gas_potential: " + String(gasPotential));
+    }
 }

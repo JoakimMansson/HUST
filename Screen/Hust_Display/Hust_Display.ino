@@ -3,6 +3,7 @@
 #include "Functions.h"
 #include "buffer.h"
 #include "Serial_CAN_FD.h"
+#include "CAN.h"
 
 #define BUTTON_SWITCH_SCREEN_PIN 4
 #define ORANGE_BUTTON_7 7
@@ -29,81 +30,8 @@ void main_screen();
 void values_screen();
 
 
-static byte rgb_yellow[] = {230, 230, 50};
-static byte rbg_red[] = {250, 20, 1};
-float max_gas = 1;
-float min_gas = 2000;
-float max_break = 0;
-float min_break = 2000;
-float current = 0;
-//float velocity = 30;
-float voltage_diff = 20;
-//float battery_voltage = 20;
-float battery_voltage_max = 100;
-float mc_watt = 20;
-//current voltage
-float mc_watt_max = 100;
-float solar_watt = 20;
-float solar_watt_max = 100;
-//float battery_tempereature;
-//float solar_temperature_front;
-//float solar_temperature_back;
-//float bms_temperature;
-float gas_potential;
-float break_potential;
-float last_brake_potential = 1/1337;
-/*---------------------- CANBUS ----------------------*/
-// Motor Controller
-double HeatsinkTemp = 0.0; //
-double MotorTemp = 0.0; //
-
-double BusCurrent = 0.0; //
-double BusVoltage = 0.0; //
-
-double MotorVelocity = 0.0; //
-double VehicleVelocity = 0.0;  //
-
-// BMS (Orion 2)
-static double PackVoltageMax = 159.6;
-double PackVoltage = 0.0; // 
-double PackCurrent = 0.0; // 
-double PackAverageCurrent = 0.0; //
-
-//double PackSOH = 0.0; //
-//double PackSOC = 0.0; //
-
-double LowCellVoltage = 0.0; //
-double HighCellVoltage = 0.0; //
-double AvgCellVoltage = 0.0; //
-
-double HighTemperature = 0.0; //
-double LowTemperature = 0.0; //
-double AvgTemperature = 0.0; //
-double InternalTemperature = 0.0; //
-
-// MPPT (SEC-B175-7A TPEE)
-double MPPTInputVoltage = 0.0; //
-double MPPTInputCurrent = 0.0; //
-
-double MPPTOutputVoltage = 0.0; //
-double MPPTOutputCurrent = 0.0; // 
-double MMPTOutputPower = 0.0;
-static double MPPT_power_max = 2000;
-
-/*-------------------------------------------------*/
-
-CircularBuffer gas_buffer(10);
-CircularBuffer break_buffer(10);
-
-
-int counter_gas = 0;
-int counter_break = 0;
-int pot_counter = 0;
-int driving_mode_counter = 2; /*  */
-int cruise_control_velocity = 100;
-
-
-bool in_start_screen = true; // IN START SCREEN
+// Flags and Modes
+bool in_start_screen = true;
 bool data_received_flag = false;
 bool update_screen_flag = true;
 bool start_screen_flag = true;
@@ -117,16 +45,66 @@ bool solar_error_flag = true;
 bool driving_mode_error_flag = true;
 bool error_flag = true;
 bool cruise_control_flag = false;
-
-/*  */
-bool eco_or_race_mode_flag = true; /*--- Eco 0 Race 1 ---*/
+bool eco_or_race_mode_flag = true; // Eco mode (0), Race mode (1)
 bool right_blinker_flag = false;
 bool left_blinker_flag = false;
 bool hazard_lights = false;
 bool potentiometer_flag = false;
 
-
+// Screen Data
 String global_data = "";
+
+// Circular Buffers
+CircularBuffer gas_buffer(10);
+CircularBuffer break_buffer(10);
+
+// Counters
+int counter_gas = 0;
+int counter_break = 0;
+int pot_counter = 0;
+int driving_mode_counter = 2; // 0: Neutral, 1: Drive, 2: Reverse
+int cruise_control_velocity = 100;
+
+// Vehicle Parameters
+float max_gas = 1;
+float min_gas = 2000;
+float max_break = 0;
+float min_break = 2000;
+float current = 0;
+float voltage_diff = 20;
+float battery_voltage_max = 100;
+float mc_watt = 20;
+float mc_watt_max = 100;
+float solar_watt = 20;
+float solar_watt_max = 100;
+float gas_potential;
+float break_potential;
+float last_brake_potential = 1 / 1337;
+
+// CANBUS Data
+double HeatsinkTemp = 0.0;
+double MotorTemp = 0.0;
+double BusCurrent = 0.0;
+double BusVoltage = 0.0;
+double MotorVelocity = 0.0;
+double VehicleVelocity = 0.0;
+double PackVoltageMax = 159.6;
+double PackVoltage = 0.0;
+double PackCurrent = 0.0;
+double PackAverageCurrent = 0.0;
+double LowCellVoltage = 0.0;
+double HighCellVoltage = 0.0;
+double AvgCellVoltage = 0.0;
+double HighTemperature = 0.0;
+double LowTemperature = 0.0;
+double AvgTemperature = 0.0;
+double InternalTemperature = 0.0;
+double MPPTInputVoltage = 0.0;
+double MPPTInputCurrent = 0.0;
+double MPPTOutputVoltage = 0.0;
+double MPPTOutputCurrent = 0.0;
+double MMPTOutputPower = 0.0;
+static double MPPT_power_max = 2000;
 
 /* ------------------- CAN ------------------- */
 void uart_init(unsigned long baudrate)
@@ -323,20 +301,20 @@ void loop() {
     potentiometer_flag = true;
   }
 
-  byte switch_screen_button = digitalRead(BUTTON_SWITCH_SCREEN_PIN);
-  if(switch_screen_button == LOW) {
-    Serial.println("Screen changing");
-    if(start_screen_flag) {
-      if(!potentiometer_flag) {
+    byte switch_screen_button = digitalRead(BUTTON_SWITCH_SCREEN_PIN);
+    if(switch_screen_button == LOW) {
+      Serial.println("Screen changing");
+      if(start_screen_flag) {
+        if(!potentiometer_flag) {
 
+        } else {
+        start_screen_flag = false;
+        main_screen_flag = true;
+        }
       } else {
-      start_screen_flag = false;
-      main_screen_flag = true;
+        main_screen_flag = false;
+        start_screen_flag = true;
       }
-    } else {
-      main_screen_flag = false;
-      start_screen_flag = true;
-    }
     delay(500);
   }
 
