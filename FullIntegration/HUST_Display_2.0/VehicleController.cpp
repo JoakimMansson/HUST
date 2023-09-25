@@ -1,29 +1,26 @@
 #include "VehicleController.h"
+#include "Serial_CAN_FD.h"
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
 
-VehicleController::VehicleController(SoftWareSerial can_serial) {
-  this->can_serial = can_serial;
-}
 
-
-void VehicleController::vehicleControlLoop(int gas_N_reverse_potential, int brake_potential, int drivingMode, bool inCruiseControl, bool inECO, bool inStartScreen, int cruiseSpeedIncDec) {
+void VehicleController::vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential, int drivingMode, bool inCruiseControl, bool inECO, bool inStartScreen, int cruiseSpeedIncDec) {
   this->drivingMode = drivingMode;
   this->inCruiseControl = inCruiseControl;
   this->inECO = inECO;
   this->inStartScreen = inStartScreen;
   this->cruiseSpeedIncDec = cruiseSpeedIncDec;
 
-
+  /*
   unsigned char CAN_available = !digitalRead(CAN_INT_PIN);
   if(CAN_available > 0){
     unsigned long start_time = millis();
     while (CAN_MSGAVAIL == CAN.checkReceive() && millis() - start_time < 120) {
 
-        /*
-          READ CAN DATA
-        */
+        
+        //READ CAN DATA
+        
 
         // Extract vehicle velocity speed
         if(CAN_ID == "1027")
@@ -41,6 +38,7 @@ void VehicleController::vehicleControlLoop(int gas_N_reverse_potential, int brak
         }
     }
   }
+  */
   updateCurrentDrivingMode();
   enterCruiseControl();
   
@@ -49,7 +47,7 @@ void VehicleController::vehicleControlLoop(int gas_N_reverse_potential, int brak
   */
 
   applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
-  applyECOControl(gas_N_reverse_potential);
+  applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
 
   // Sends drive commands if not in start screen
   if(!inStartScreen)
@@ -152,17 +150,22 @@ void VehicleController::updateCurrentDrivingMode() {
 
 
 void VehicleController::brake(double brakePot) {
+  /*
   if(busCurrent < maxBrakeBusCurrent)
   {
     brakePot = 0;
   }
+  */
+
+  if (brakePot > 0.3) {brakePot = 0.3;} // LIMIT BRAKING TO 30%
 
   String ieee754 = IEEE754(brakePot);
   IEEE754ToArray(BRAKE_ARR, ieee754);
   
   Serial.print("BRAKE: ");
   Serial.println(brakePot);
-  sendCAN(0x501, BRAKE_ARR);
+  can_send(0x501, 0, 0, 0, 0, BRAKE_ARR);
+  //sendCAN(0x501, BRAKE_ARR);
 }
 
 void VehicleController::controlCar(double driveReversePot, double brakePot) {
@@ -170,14 +173,16 @@ void VehicleController::controlCar(double driveReversePot, double brakePot) {
   driveReversePot = driveReversePot / 1023;//max_gas_potential;
   brakePot = brakePot / 1023;//max_brake_potential;
 
-  sendCAN(0x502, BUS_VOLTAGE);
+  can_send(0x502, 0, 0, 0, 8, BUS_VOLTAGE);
+  //sendCAN(0x502, BUS_VOLTAGE); -- OLD WAY OF SENDING CAN
   /* ---------- NEUTRAL ----------- */
   if (isNeutral) {
-    //debugln("IS NEUTRAL!!");
-    sendCAN(0x501, DRIVE_ARR);
+    Serial.println("[controlCar()] IS NEUTRAL");
+    can_send(0x501, 0, 0, 0, 8, DRIVE_ARR);
+    //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
   /* ------------ DRIVING ------------- */
   } else if (isDriving) {
-    debugln("IS DRIVING, POT: " + String(driveReversePot));
+    Serial.println("[controlCar()] IS DRIVING, POT: " + String(driveReversePot));
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
@@ -187,11 +192,11 @@ void VehicleController::controlCar(double driveReversePot, double brakePot) {
 
     // Apply brake if driving = 0 & brake > 0
     if(driveReversePot == 0 && brakePot > 0) brake(brakePot);
-    else sendCAN(0x501, DRIVE_ARR);
+    else can_send(0x501, 0, 0, 0, 8, DRIVE_ARR); //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
     resetArrays();
     /* --------- REVERSING --------- */
   } else if (isReversing) {
-    debugln("IS REVERSING, POT: " + String(driveReversePot));
+    Serial.println("[controlCar()] IS REVERSING, POT: " + String(driveReversePot));
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
@@ -201,7 +206,7 @@ void VehicleController::controlCar(double driveReversePot, double brakePot) {
 
     // Apply brake if reversing = 0 else drive
     if(driveReversePot == 0 && brakePot > 0) brake(brakePot);
-    else sendCAN(0x501, REVERSE_ARR);
+    else can_send(0x501, 0, 0, 0, 8, REVERSE_ARR); // sendCAN(0x501, REVERSE_ARR); -- OLD WAY OF SENDING CAN
     resetArrays();
   }
 }
@@ -221,7 +226,7 @@ void VehicleController::enterCruiseControl() {
   }
 }
 
-void VehicleController::applyCruiseControl(float& gas_N_reverse_potential, float& brake_potential) {
+void VehicleController::applyCruiseControl(int& gas_N_reverse_potential, int& brake_potential) {
   double gas_increment = 3; // CHANGE THIS FOR HARDER ACCELERATION
   double brake_increment = 2;
 
@@ -297,7 +302,7 @@ void VehicleController::applyCruiseControl(float& gas_N_reverse_potential, float
     if(brake_potential > max_brake_potential){brake_potential=max_brake_potential;}
     if(brake_potential < min_brake_potential){brake_potential=min_brake_potential;}*/
 
-    if(gas_N_reverse_potgas_N_reverseential > Max_gas_N_reverse_potential){gas_N_reverse_potential=Max_gas_N_reverse_potential;}
+    if(gas_N_reverse_potential > Max_gas_N_reverse_potential){gas_N_reverse_potential=Max_gas_N_reverse_potential;}
     if(gas_N_reverse_potential < Min_gas_N_reverse_potential){gas_N_reverse_potential=Min_gas_N_reverse_potential;}
     if(brake_potential > Max_brake_potential){brake_potential=Max_brake_potential;}
     if(brake_potential < Min_brake_potential){brake_potential=Min_brake_potential;}
@@ -310,7 +315,7 @@ void VehicleController::applyCruiseControl(float& gas_N_reverse_potential, float
 
 /* +++++++++++ ECO CONTROL +++++++++++++*/
 
-void VehicleController::applyECOControl(float& gas_N_reverse_potential) {
+void VehicleController::applyECOControl(int& gas_N_reverse_potential) {
   float potential_gap_error = gas_N_reverse_potential - last_gas_N_reverse_potential;
 
   if(potential_gap_error > 10 && hasAppliedECO)

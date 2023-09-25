@@ -3,6 +3,8 @@
 #include "Functions.h"
 #include "buffer.h"
 #include "Serial_CAN_FD.h"
+#include "VehicleController.h"
+#include "GlobalVariablesReceive.h"
 #include <SoftwareSerial.h>
 
 /* DEFINING BUTTON PINS */
@@ -38,7 +40,7 @@ unsigned char __rtr = 0; // remote frame or data frame
 unsigned char __fdf = 0; // can fd or can 2.0
 unsigned char __len = 0; // data length
 unsigned char __dta[8]; // data
-/* ----- // CAN VARIABLES ----- */
+/* ----- CAN VARIABLES ----- */
 
 
 /* Global used for buffer optimization */
@@ -46,6 +48,9 @@ Gpu_Hal_Context_t host, *phost;
 void start_screen();
 void main_screen();
 void values_screen();
+
+
+VehicleController ECU;
 
 
 // Flags and Modes
@@ -96,14 +101,6 @@ int break_potential;
 int last_brake_potential = 1 / 1337;
 int cruise_control_velocity = 100;
 
-
-/* +++++ CAN VARIABLES +++++ */
-#define can_tx  8           // tx of serial can module connect to D2
-#define can_rx  9           // rx of serial can module connect to D3
-
-SoftwareSerial can_serial(can_tx, can_rx);
-
-#define uart_can can_serial
 
 /* ++++++++++++++++++++++ CAN ++++++++++++++++++++++ */
 
@@ -260,21 +257,21 @@ void setup() {
   /* Init HW Hal */
   App_Common_Init(&host);
 
-  pinMode(gas, INPUT);
-  pinMode(brk, INPUT);
-  pinMode(gear, INPUT);
+  pinMode(gas, INPUT); // RIGHT Potentiometer (ANALOG)
+  pinMode(brk, INPUT); // LEFT Potentiometer (ANALOG)
+  pinMode(gear, INPUT); // A 3-way switch (ANALOG)
 
-  pinMode(L1, INPUT);
-  pinMode(L2, INPUT);
+  pinMode(L1, INPUT); // Left BLINKER (DIGITAL)
+  pinMode(L2, INPUT); 
   pinMode(L3, INPUT);
 
-  pinMode(R1, INPUT);
-  pinMode(R2, INPUT);
-  pinMode(R3, INPUT);
+  pinMode(R1, INPUT); // Right BLINKER (DIGITAL)
+  pinMode(R2, INPUT); // INCREASE Cruise Speed (DIGITAL)
+  pinMode(R3, INPUT); // DECREASE Cruise Speed (DIGITAL)
 
-  pinMode(B1, INPUT);
-  pinMode(B2, INPUT);
-  pinMode(B3, INPUT);
+  pinMode(B1, INPUT); // Horn (DIGITAL)
+  pinMode(B2, INPUT); // Switch between main- & start-screen (DIGITAL)
+  pinMode(B3, INPUT); 
   pinMode(B4, INPUT);
 
   Serial.begin(9600);
@@ -289,26 +286,19 @@ void loop() {
   int gasPotential = analogRead(A1);
   int breakPotential = analogRead(A2);
 
-  byte switch_screen_button = digitalRead(BUTTON_SWITCH_SCREEN_PIN);
+  byte switch_screen_button = digitalRead(B2);
   if(switch_screen_button == LOW) {
     Serial.println("Screen changing");
-    if(start_screen_flag) {
-        start_screen_flag = false;
-        main_screen_flag = true;
-      }
-    } else {
-        main_screen_flag = false;
-        start_screen_flag = true;
-    }
+    in_start_screen = !in_start_screen;
   }
 
   if (in_start_screen) {
     gas_buffer.add(gasPotential);
     break_buffer.add(breakPotential);
-    pot_counter++;
+    mean_gas_brake_counter++;
 
   /* calc new mean for gas */
-  if(pot_counter > 10) {
+  if(mean_gas_brake_counter > 10) {
     float mean_gas = gas_buffer.get_mean();
     float mean_brake = break_buffer.get_mean();
     
@@ -328,18 +318,30 @@ void loop() {
       min_break = mean_brake;
     }
 
-    pot_counter = 0;
+    mean_gas_brake_counter = 0;
   }
 
-
-
-    
     start_screen(); // SHow start screen
   }
-  else if (main_screen_flag) {
-    
+  else {
+    /*
+    if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta))
+    {
+        Serial.print("GET DATA FROM: 0x");
+        Serial.println(__id, HEX);
+        Serial.print("EXT = ");
+        Serial.println(__ext);
+        Serial.print("RTR = ");
+        Serial.println(__rtr);
+        Serial.print("FDF = ");
+        Serial.println(__fdf);
+        Serial.print("LEN = ");
+        Serial.println(__len);
+        
+
+        Serial.println(atoi(__dta));
+    }
+    */
+    main_screen();
   }
-
-
-
 }

@@ -29,8 +29,8 @@ class VehicleController
 
         SoftwareSerial *can_serial;
 
-        void vehicleControlLoop(); // Main function to drive vehicle
-        VehicleController(SoftwareSerial can_serial); // Constructor
+        void vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential, int drivingMode, bool inCruiseControl, bool inECO, bool inStartScreen, int cruiseSpeedIncDec); // Main function to drive vehicle
+        
         
 
     private:
@@ -47,6 +47,8 @@ class VehicleController
         bool hasAppliedECO = false;
         int ECOPotential = 0;
 
+        double vehicleVelocity = 0.0; // Velocity of vehicle
+        double lastTimePointVelocityFetched = 0.0; // Time of velocity fetch
 
         // Input for cruise control and buttons to decrease and increase cruise speed
         
@@ -58,7 +60,7 @@ class VehicleController
         int cruiseSpeedIncDec = 100;
         int lastCruiseSpeedIncDec = 100;
 
-        double vehicleVelocity = 0.0; // Velocity of vehicle
+        
         double lastVehicleVelocity = 0.0; // Previous iteration of vehicle velocity
 
         void IEEE754ToArray(unsigned char (&brake_drive_reverse)[8], String ieee754);
@@ -72,9 +74,9 @@ class VehicleController
         void controlCar(double driveReversePot, double brakePot);
 
         void enterCruiseControl();
-        void applyCruiseControl(float& gas_N_reverse_potential, float& brake_potential);
+        void applyCruiseControl(int& gas_N_reverse_potential, int& brake_potential);
 
-        void applyECOControl(float& gas_N_reverse_potential);
+        void applyECOControl(int& gas_N_reverse_potential);
 
         
 
