@@ -81,8 +81,6 @@ String global_data = "";
 CircularBuffer gas_buffer(10);
 CircularBuffer break_buffer(10);
 
-int mean_gas_brake_counter = 0; // Counter for nr. potentials fetched 
-
 // Vehicle Parameters
 int driving_mode_counter = 2; // 0: Neutral, 1: Drive, 2: Reverse
 int max_gas = 1;
@@ -280,7 +278,7 @@ void checkLightButtonCommands() {
   /* Left Blinker (CAN ID: 0x010) */
   static bool leftBlinkerOn = false;
   static unsigned long lastTimeLeftBlinkerButtonPress = millis();
-  byte leftBlinkerButton = digitalRead(B2);
+  byte leftBlinkerButton = digitalRead(L1);
   if (leftBlinkerButton == HIGH) {
     if (millis() - lastTimeLeftBlinkerButtonPress > 700) leftBlinkerOn = !leftBlinkerOn;
     Serial.println("[checkLightButtonCommands] Toggling left blinker");
@@ -392,13 +390,13 @@ void loop() {
   checkSwitchButtonMainStartScreen();
 
   if (inStartScreen) {
+    static byte meanGasBrakeCounter = 0;
     gas_buffer.add(gasPotential);
     break_buffer.add(breakPotential);
-    mean_gas_brake_counter++;
+    meanGasBrakeCounter++;
 
-  /* calc new mean for gas */
-  if 
-  (mean_gas_brake_counter > 10) {
+  /* calc new mean for gas IF we have 10 potential values */
+  if (meanGasBrakeCounter > 10) {
     int mean_gas = gas_buffer.get_mean(); // -1337 since potential is reversed
     int mean_brake = break_buffer.get_mean();
     
@@ -422,10 +420,10 @@ void loop() {
       ECU.Min_brake_potential = mean_brake;
     }
 
-    mean_gas_brake_counter = 0;
+    meanGasBrakeCounter = 0;
   }
 
-    start_screen(); // Show start screen
+    start_screen(); // Show start_screen GUI
   }
   else {
     /* FIX AND READ THE 
@@ -444,12 +442,13 @@ void loop() {
         Serial.println(atoi(__dta));
       }
       */
-        main_screen();
-        checkLightButtonCommands();
-        checkHornButtonCommand();
+        main_screen(); // Show main_screen GUI
+        checkLightButtonCommands(); // Check if light buttons are pressed
+        checkHornButtonCommand(); // Check if horn button is pressed
+
 
         if (ECU.inCruiseControl) { 
-          checkButtonsIncreaseDecreaseCruiseSpeed();
+          checkButtonsIncreaseDecreaseCruiseSpeed(); // Check if should increase/decrease cruise speed
         }
         
 
