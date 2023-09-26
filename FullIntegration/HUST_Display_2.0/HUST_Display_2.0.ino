@@ -127,7 +127,7 @@ int uart_available()
 
 /* ----------------------- CAN ----------------------- */
 
-/* ++++++++++++++++++++++ SCREEN ++++++++++++++++++++++ */
+/* ++++++++++++++++++++++ SCREEN GUI ++++++++++++++++++++++ */
 
 void start_screen() {
   char maxgas_char[20];
@@ -242,8 +242,23 @@ void main_screen() {
     Finish_Display(phost);
 }
 
-/* ------------------- SCREEN ----------------------- */
+/* ------------------- SCREEN GUI ----------------------- */
 
+
+/* ++++++++++++++++++++++ BUTTON INPUTS ++++++++++++++++++++++ */
+
+void switchMainStartScreen() {
+  static unsigned long lastTimeButtonPress = millis();
+
+  byte switch_screen_button = digitalRead(B2);
+  if(switch_screen_button == HIGH && millis() - lastTimeButtonPress > 500) {
+    Serial.println("Screen changing");
+    in_start_screen = !in_start_screen;
+    lastTimeButtonPress = millis();
+  }
+}
+
+/* ------------------- BUTTON INPUTS ----------------------- */
 
 int calculateNewMaxPotentials(float potential, float min, float max) {
   int mappedValue = map(potential, 0, 1023, min, max);
@@ -269,8 +284,8 @@ void setup() {
   pinMode(R2, INPUT); // INCREASE Cruise Speed (DIGITAL)
   pinMode(R3, INPUT); // DECREASE Cruise Speed (DIGITAL)
 
-  pinMode(B1, INPUT); // Horn (DIGITAL)
-  pinMode(B2, INPUT); // Switch between main- & start-screen (DIGITAL)
+  pinMode(B1, INPUT_PULLUP); // Horn (DIGITAL)
+  pinMode(B2, INPUT_PULLUP); // Switch between main- & start-screen (DIGITAL)
   pinMode(B3, INPUT); 
   pinMode(B4, INPUT);
 
@@ -286,11 +301,7 @@ void loop() {
   int gasPotential = analogRead(A1);
   int breakPotential = analogRead(A2);
 
-  byte switch_screen_button = digitalRead(B2);
-  if(switch_screen_button == LOW) {
-    Serial.println("Screen changing");
-    in_start_screen = !in_start_screen;
-  }
+  switchMainStartScreen();
 
   if (in_start_screen) {
     gas_buffer.add(gasPotential);
@@ -299,8 +310,8 @@ void loop() {
 
   /* calc new mean for gas */
   if(mean_gas_brake_counter > 10) {
-    float mean_gas = gas_buffer.get_mean();
-    float mean_brake = break_buffer.get_mean();
+    int mean_gas = abs(gas_buffer.get_mean() - 1337); // -1337 since potential is reversed
+    int mean_brake = break_buffer.get_mean();
     
     /* Setting max || min GAS */
     if (mean_gas > max_gas) {
@@ -314,14 +325,14 @@ void loop() {
     if (mean_brake > max_break) {
       max_break = mean_brake;
     }
-    else if (mean_brake < max_break) {
+    else if (mean_brake < min_break) {
       min_break = mean_brake;
     }
 
     mean_gas_brake_counter = 0;
   }
 
-    start_screen(); // SHow start screen
+    start_screen(); // Show start screen
   }
   else {
     /*
@@ -340,8 +351,8 @@ void loop() {
         
 
         Serial.println(atoi(__dta));
+      */
+        main_screen();
+
     }
-    */
-    main_screen();
-  }
 }
