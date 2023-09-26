@@ -65,6 +65,14 @@ void VehicleController::vehicleControlLoop(int &gas_N_reverse_potential, int &br
   lastInCruiseControl = inCruiseControl;
 }
 
+void VehicleController::decreaseCruiseSpeed() {
+  cruiseSpeedIncDec -= 2;
+}
+
+void VehicleController::IncreaseCruiseSpeed() {
+  cruiseSpeedIncDec += 2;
+}
+
 
 void VehicleController::IEEE754ToArray(unsigned char (&brake_drive_reverse)[8], String ieee754) {
     for (int i = 0; i < 4; i++) {

@@ -54,7 +54,7 @@ VehicleController ECU;
 
 
 // Flags and Modes
-bool in_start_screen = true;
+bool inStartScreen = true;
 bool data_received_flag = false;
 bool update_screen_flag = true;
 bool start_screen_flag = true;
@@ -123,6 +123,12 @@ unsigned char uart_read()
 int uart_available()
 {
     return uart_can.available();
+}
+
+void clearCANDataArray() {
+  for(int i = 0; i < 8; i++) {
+    __dta[i] = 0;
+  }
 }
 
 /* ----------------------- CAN ----------------------- */
@@ -247,15 +253,97 @@ void main_screen() {
 
 /* ++++++++++++++++++++++ BUTTON INPUTS ++++++++++++++++++++++ */
 
-void switchMainStartScreen() {
-  static unsigned long lastTimeButtonPress = millis();
+void checkSwitchButtonMainStartScreen() {
 
-  byte switch_screen_button = digitalRead(B2);
-  if(switch_screen_button == HIGH && millis() - lastTimeButtonPress > 500) {
+  static unsigned long lastTimeButtonPress = millis();
+  byte switchScreenButton = digitalRead(B2);
+  if(switchScreenButton == HIGH && millis() - lastTimeButtonPress > 700) {
     Serial.println("Screen changing");
-    in_start_screen = !in_start_screen;
+    inStartScreen = !inStartScreen;
     lastTimeButtonPress = millis();
   }
+
+}
+
+void checkEnterCruise() {
+  static unsigned long lastTimeCruiseButtonPress = millis();
+  byte toggleCruiseButton = digitalRead(L2);
+  if(toggleCruiseButton == HIGH && millis() - lastTimeCruiseButtonPress > 700) {
+    Serial.println("[checkEnterCruise] Toggling cruise");
+    ECU.inCruiseControl = !ECU.inCruiseControl;
+    lastTimeCruiseButtonPress = millis();
+  }
+}
+
+void checkLightButtonCommands() {
+
+  /* Left Blinker (CAN ID: 0x010) */
+  static bool leftBlinkerOn = false;
+  static unsigned long lastTimeLeftBlinkerButtonPress = millis();
+  byte leftBlinkerButton = digitalRead(B2);
+  if (leftBlinkerButton == HIGH) {
+    if (millis() - lastTimeLeftBlinkerButtonPress > 700) leftBlinkerOn = !leftBlinkerOn;
+    Serial.println("[checkLightButtonCommands] Toggling left blinker");
+    __dta[0] = leftBlinkerOn;
+    can_send(0x010, 0, 0, 0, 8, __dta);
+  }
+
+  /* Right Blinker (CAN ID: 0x011) */
+  static bool rightBlinkerOn = false;
+  static unsigned long lastTimeRightBlinkerButtonPress = millis();
+  byte rightBlinkerButton = digitalRead(R1);
+  if (rightBlinkerButton == HIGH) {
+    if (millis() - lastTimeRightBlinkerButtonPress > 700) rightBlinkerOn = !rightBlinkerOn;
+    Serial.println("[checkLightButtonCommands] Toggling right blinker");
+    __dta[0] = rightBlinkerOn;
+    can_send(0x011, 0, 0, 0, 8, __dta);
+  }
+
+  
+  /* Warning Lights (CAN ID: 0x012) */
+  static bool warningLightsOn = false;
+  static unsigned long lastTimeWarningLightsButtonPress = millis();
+  byte warningLightsButton = digitalRead(B3);
+  if (warningLightsButton == HIGH) {
+    if (millis() - lastTimeWarningLightsButtonPress > 700) warningLightsOn = !warningLightsOn;
+    Serial.println("[checkLightButtonCommands] Toggling warning lights");
+    __dta[0] = warningLightsOn;
+    can_send(0x012, 0, 0, 0, 8, __dta);
+  }
+
+}
+
+void checkHornButtonCommand() {
+
+  /* Horn (CAN ID: 0x020) */
+  static unsigned long lastTimeHornButtonPress = millis();
+  byte hornButton = digitalRead(B1);
+  if (hornButton == HIGH && millis() - lastTimeHornButtonPress > 700) {
+    Serial.println("[checkHornButtonCommand] Beeping horn");
+    __dta[0] = 1;
+    can_send(0x020, 0, 0, 0, 8, __dta);
+  }
+}
+
+void checkButtonsIncreaseDecreaseCruiseSpeed() {
+
+  /* Increase Cruise Speed */
+  static unsigned long lastTimeIncreaseButtonPress = millis();
+  byte increaseButton = digitalRead(R2);
+  if (increaseButton == HIGH && millis() - lastTimeIncreaseButtonPress > 700) {
+    Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Increasing cruise speed");
+    ECU.IncreaseCruiseSpeed();
+  }
+
+  /* Decrease Cruise Speed (CAN ID: 0x031) */
+  static unsigned long lastTimeDecreaseButtonPress = millis();
+  byte decreaseButton = digitalRead(R3);
+  if (decreaseButton == HIGH && millis() - lastTimeDecreaseButtonPress > 700) {
+    Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Decreasing cruise speed");
+    ECU.decreaseCruiseSpeed();
+  }
+
+
 }
 
 /* ------------------- BUTTON INPUTS ----------------------- */
@@ -277,8 +365,8 @@ void setup() {
   pinMode(gear, INPUT); // A 3-way switch (ANALOG)
 
   pinMode(L1, INPUT); // Left BLINKER (DIGITAL)
-  pinMode(L2, INPUT); 
-  pinMode(L3, INPUT);
+  pinMode(L2, INPUT); // Enter Cruise (DIGITAL)
+  pinMode(L3, INPUT); 
 
   pinMode(R1, INPUT); // Right BLINKER (DIGITAL)
   pinMode(R2, INPUT); // INCREASE Cruise Speed (DIGITAL)
@@ -286,8 +374,8 @@ void setup() {
 
   pinMode(B1, INPUT_PULLUP); // Horn (DIGITAL)
   pinMode(B2, INPUT_PULLUP); // Switch between main- & start-screen (DIGITAL)
-  pinMode(B3, INPUT); 
-  pinMode(B4, INPUT);
+  pinMode(B3, INPUT); // Warning lights (DIGITAL)
+  pinMode(B4, INPUT); // Change driving mode ECO/RACE - (DIGITAL)
 
   Serial.begin(9600);
 
@@ -298,35 +386,40 @@ void setup() {
 
 void loop() {
 
-  int gasPotential = analogRead(A1);
+  int gasPotential = abs(analogRead(A1) - 1337);
   int breakPotential = analogRead(A2);
 
-  switchMainStartScreen();
+  checkSwitchButtonMainStartScreen();
 
-  if (in_start_screen) {
+  if (inStartScreen) {
     gas_buffer.add(gasPotential);
     break_buffer.add(breakPotential);
     mean_gas_brake_counter++;
 
   /* calc new mean for gas */
-  if(mean_gas_brake_counter > 10) {
-    int mean_gas = abs(gas_buffer.get_mean() - 1337); // -1337 since potential is reversed
+  if 
+  (mean_gas_brake_counter > 10) {
+    int mean_gas = gas_buffer.get_mean(); // -1337 since potential is reversed
     int mean_brake = break_buffer.get_mean();
     
     /* Setting max || min GAS */
     if (mean_gas > max_gas) {
       max_gas = mean_gas;
+      ECU.Max_gas_N_reverse_potential = mean_gas;
     }
     else if (mean_gas < min_gas) {
       min_gas = mean_gas;
+      ECU.Min_gas_N_reverse_potential = mean_gas;
     }
 
     /* Setting max || min BRAKE */
     if (mean_brake > max_break) {
       max_break = mean_brake;
+      ECU.Max_brake_potential = mean_brake;
     }
     else if (mean_brake < min_break) {
       min_break = mean_brake;
+      ECU.Min_brake_potential = mean_brake;
     }
 
     mean_gas_brake_counter = 0;
@@ -335,9 +428,8 @@ void loop() {
     start_screen(); // Show start screen
   }
   else {
-    /*
-    if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta))
-    {
+    /* FIX AND READ THE 
+    if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta)) {
         Serial.print("GET DATA FROM: 0x");
         Serial.println(__id, HEX);
         Serial.print("EXT = ");
@@ -348,11 +440,18 @@ void loop() {
         Serial.println(__fdf);
         Serial.print("LEN = ");
         Serial.println(__len);
-        
 
         Serial.println(atoi(__dta));
+      }
       */
         main_screen();
+        checkLightButtonCommands();
+        checkHornButtonCommand();
+
+        if (ECU.inCruiseControl) { 
+          checkButtonsIncreaseDecreaseCruiseSpeed();
+        }
+        
 
     }
 }

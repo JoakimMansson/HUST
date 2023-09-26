@@ -1,6 +1,5 @@
 #pragma once
 #include <Arduino.h>
-#include <SoftwareSerial.h>
 
 
 class VehicleController
@@ -27,8 +26,9 @@ class VehicleController
         int Max_brake_potential = 0;
         int Min_brake_potential = 0;
 
-        SoftwareSerial *can_serial;
-
+        void enterCruiseControl(int vehicleVelocity);
+        void decreaseCruiseSpeed();
+        void IncreaseCruiseSpeed();
         void vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential, int drivingMode, bool inCruiseControl, bool inECO, bool inStartScreen, int cruiseSpeedIncDec); // Main function to drive vehicle
         
         
