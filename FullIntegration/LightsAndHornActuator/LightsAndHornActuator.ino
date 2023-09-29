@@ -88,14 +88,17 @@ void blink() {
       wasLastOn = !wasLastOn;
       digitalWrite(left_blinker_pin, wasLastOn);
       digitalWrite(right_blinker_pin, wasLastOn);
+      lastBlink = millis();
     } 
     else if (isLeftBlinker) {
       wasLastOn = !wasLastOn;
       digitalWrite(left_blinker_pin, wasLastOn);
+      lastBlink = millis();
     } 
     else if (isRightBlinker) {
       wasLastOn = !wasLastOn;
       digitalWrite(left_blinker_pin, wasLastOn);
+      lastBlink = millis();
     }
 
   }
