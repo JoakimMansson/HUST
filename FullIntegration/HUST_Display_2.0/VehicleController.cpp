@@ -2,43 +2,13 @@
 #include "Serial_CAN_FD.h"
 #include <Arduino.h>
 #include <SoftwareSerial.h>
+#include "CANDecoder.h"
+#include "GlobalVariablesReceive.h"
 
 
 
-void VehicleController::vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential, int drivingMode, bool inCruiseControl, bool inECO, bool inStartScreen, int cruiseSpeedIncDec) {
-  this->drivingMode = drivingMode;
-  this->inCruiseControl = inCruiseControl;
-  this->inECO = inECO;
-  this->inStartScreen = inStartScreen;
-  this->cruiseSpeedIncDec = cruiseSpeedIncDec;
+void VehicleController::vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential) {
 
-  /*
-  unsigned char CAN_available = !digitalRead(CAN_INT_PIN);
-  if(CAN_available > 0){
-    unsigned long start_time = millis();
-    while (CAN_MSGAVAIL == CAN.checkReceive() && millis() - start_time < 120) {
-
-        
-        //READ CAN DATA
-        
-
-        // Extract vehicle velocity speed
-        if(CAN_ID == "1027")
-        {
-          vehicleVelocity = extractBytesToDecimal(CAN_data, 4, 4);
-          lastTimePointVelocityFetched = millis();
-          //debugln("Vehicle velocity: " + String(vehicleVelocity));
-        }
-        // Extract bus_current
-        if(CAN_ID == "1026")
-        {
-          busCurrent = extractBytesToDecimal(CAN_data, 4, 4);
-          //debugln("Bus current: " + String(busCurrent));
-          //delay(800);
-        }
-    }
-  }
-  */
   updateCurrentDrivingMode();
   enterCruiseControl();
   
@@ -49,11 +19,9 @@ void VehicleController::vehicleControlLoop(int &gas_N_reverse_potential, int &br
   applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
   applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
 
-  // Sends drive commands if not in start screen
-  if(!inStartScreen)
-  {
-    controlCar(gas_N_reverse_potential, brake_potential);
-  }
+  // Sends drive commands to vehicle
+  controlCar(gas_N_reverse_potential, brake_potential);
+
   last_gas_N_reverse_potential = gas_N_reverse_potential;
   last_brake_potential = brake_potential;
   lastVehicleVelocity = vehicleVelocity; // Set last vehicle velocity to current velocity
@@ -158,8 +126,9 @@ void VehicleController::updateCurrentDrivingMode() {
 
 
 void VehicleController::brake(double brakePot) {
-  /*
-  if(busCurrent < maxBrakeBusCurrent)
+  
+  /* FIX SO BUSCURRENT IS UPDATED MORE OFTEN!
+  if(busCurrent > maxBrakeBusCurrent || millis() - lastTimePointBusCurrentFetched > 500)
   {
     brakePot = 0;
   }

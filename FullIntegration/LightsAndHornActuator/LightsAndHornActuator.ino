@@ -66,9 +66,9 @@ void setup()
   /* 
   * IMPORTANT! DEFINE THE CORRECT DIGITAL PINS BELOW
   */
-  pinMode(left_blinker_pin, OUTPUT); // Left blinker
-  pinMode(right_blinker_pin, OUTPUT); // Right blinker
-  pinMode(horn_pin, OUTPUT); //
+  //pinMode(left_blinker_pin, OUTPUT); // Left blinker
+  //pinMode(right_blinker_pin, OUTPUT); // Right blinker
+  //pinMode(horn_pin, OUTPUT); //
 
 
   /* SETUP OF CAN MODULE */
@@ -86,18 +86,18 @@ void blink() {
 
     if (isWarningLights) {
       wasLastOn = !wasLastOn;
-      digitalWrite(left_blinker_pin, wasLastOn);
-      digitalWrite(right_blinker_pin, wasLastOn);
-      lastBlink = millis();
+      //digitalWrite(left_blinker_pin, wasLastOn);
+      //digitalWrite(right_blinker_pin, wasLastOn);
+      //lastBlink = millis();
     } 
     else if (isLeftBlinker) {
       wasLastOn = !wasLastOn;
-      digitalWrite(left_blinker_pin, wasLastOn);
+      //digitalWrite(left_blinker_pin, wasLastOn);
       lastBlink = millis();
     } 
     else if (isRightBlinker) {
       wasLastOn = !wasLastOn;
-      digitalWrite(left_blinker_pin, wasLastOn);
+      //digitalWrite(left_blinker_pin, wasLastOn);
       lastBlink = millis();
     }
 
@@ -106,7 +106,7 @@ void blink() {
 
 
 void beep() {
-  digitalWrite(horn_pin, HIGH);
+  //digitalWrite(horn_pin, HIGH);
 }
 
 
@@ -127,7 +127,7 @@ void loop()
         Serial.println(__len);
         
 
-        Serial.println(atoi(__dta));
+        Serial.println("ID: " + String(__id) + ", DATA: " + String(__dta[0]));
         int toggle = atoi(__dta);
         if (__id == 0x010) { // Left blinker
 

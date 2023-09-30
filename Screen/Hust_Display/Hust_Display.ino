@@ -527,7 +527,7 @@ void main_screen() {
     //insert_charging(phost, 0.7);
 
     
-    driving_mode_icon(phost, 250, 20, 1, driving_mode_counter, driving_mode_error_flag);
+    driving_mode_icon(phost, 250, 20, 1, ECU.drivingMode, driving_mode_error_flag);
    
 
     if(battery_error_flag) {

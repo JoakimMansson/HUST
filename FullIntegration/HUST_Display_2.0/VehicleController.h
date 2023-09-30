@@ -1,5 +1,8 @@
 #pragma once
 #include <Arduino.h>
+#include "GlobalVariablesReceive.h"
+
+
 
 
 class VehicleController
@@ -15,7 +18,6 @@ class VehicleController
         int drivingMode = 0; /* 0 = Neutral, 1 = Drive, 2 = Reverse */
         bool inECO = true;
         bool inCruiseControl = false;
-        bool inStartScreen = true;
 
     /* 
             *IMPORTANT* 
@@ -26,10 +28,9 @@ class VehicleController
         int Max_brake_potential = 0;
         int Min_brake_potential = 0;
 
-        void enterCruiseControl(int vehicleVelocity);
         void decreaseCruiseSpeed();
         void IncreaseCruiseSpeed();
-        void vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential, int drivingMode, bool inCruiseControl, bool inECO, bool inStartScreen, int cruiseSpeedIncDec); // Main function to drive vehicle
+        void vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential); // Main function to drive vehicle
         
         
 
@@ -47,9 +48,6 @@ class VehicleController
         bool hasAppliedECO = false;
         int ECOPotential = 0;
 
-        double vehicleVelocity = 0.0; // Velocity of vehicle
-        double lastTimePointVelocityFetched = 0.0; // Time of velocity fetch
-
         // Input for cruise control and buttons to decrease and increase cruise speed
         
         bool lastInCruiseControl = false;
@@ -60,7 +58,6 @@ class VehicleController
         int cruiseSpeedIncDec = 100;
         int lastCruiseSpeedIncDec = 100;
 
-        
         double lastVehicleVelocity = 0.0; // Previous iteration of vehicle velocity
 
         void IEEE754ToArray(unsigned char (&brake_drive_reverse)[8], String ieee754);

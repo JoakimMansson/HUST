@@ -1,23 +1,27 @@
 #pragma once
 
+// Necessary variable for cruise control
+extern unsigned long lastTimePointVelocityFetched; 
+extern unsigned long lastTimePointBusCurrentFetched; 
+
 // CANBUS Data
-extern double HeatsinkTemp;
-extern double MotorTemp;
-extern double BusCurrent;
-extern double BusVoltage;
-extern double MotorVelocity;
-extern double VehicleVelocity;
-extern double PackVoltageMax;
-extern double PackVoltage;
-extern double PackCurrent;
-extern double PackAverageCurrent;
-extern double LowCellVoltage;
-extern double HighCellVoltage;
-extern double AvgCellVoltage;
-extern double HighTemperature;
-extern double LowTemperature;
-extern double AvgTemperature;
-extern double InternalTemperature;
+extern double heatsinkTemp;
+extern double motorTemp;
+extern double busCurrent;
+extern double busVoltage;
+extern double motorVelocity;
+extern double vehicleVelocity;
+extern double packVoltageMax;
+extern double packVoltage;
+extern double packCurrent;
+extern double packAverageCurrent;
+extern double lowCellVoltage;
+extern double highCellVoltage;
+extern double avgCellVoltage;
+extern double highTemperature;
+extern double lowTemperature;
+extern double avgTemperature;
+extern double internalTemperature;
 extern double MPPTInputVoltage;
 extern double MPPTInputCurrent;
 extern double MPPTOutputVoltage;
