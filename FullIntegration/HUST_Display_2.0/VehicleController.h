@@ -16,7 +16,7 @@ class VehicleController
         unsigned char BUS_VOLTAGE[8] = { 0, 0, 0, 0, 0, 0, 128, 63};
     
         int drivingMode = 0; /* 0 = Neutral, 1 = Drive, 2 = Reverse */
-        bool inECO = true;
+        bool inECO = false;
         bool inCruiseControl = false;
 
     /* 
@@ -30,7 +30,7 @@ class VehicleController
 
         void decreaseCruiseSpeed();
         void IncreaseCruiseSpeed();
-        void vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential); // Main function to drive vehicle
+        void vehicleControlLoop(int gas_N_reverse_potential, int brake_potential); // Main function to drive vehicle
         
         
 
@@ -68,13 +68,13 @@ class VehicleController
         void updateCurrentDrivingMode();
 
         void brake(double brakePot);
-        void controlCar(double driveReversePot, double brakePot);
+        void controlCar(float driveReversePot, float brakePot);
 
         void enterCruiseControl();
         void applyCruiseControl(int& gas_N_reverse_potential, int& brake_potential);
 
         void applyECOControl(int& gas_N_reverse_potential);
 
-        
+        float mapFloat(float x, float in_min, float in_max, float out_min, float out_max);
 
 };

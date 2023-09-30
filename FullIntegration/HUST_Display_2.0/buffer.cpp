@@ -4,6 +4,10 @@ CircularBuffer::CircularBuffer(int size) : _size(size), _head(0), _full(false) {
   _buffer = new float[size];
 }
 
+CircularBuffer::~CircularBuffer() {
+  delete[] _buffer;
+}
+
 void CircularBuffer::add(float value) {
   _buffer[_head] = value;
   _head = (_head + 1) % _size;

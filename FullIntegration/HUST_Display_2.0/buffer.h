@@ -4,6 +4,7 @@
 class CircularBuffer {
   public:
     CircularBuffer(int size);
+    ~CircularBuffer();
     void add(float data);
     float get_mean();
 

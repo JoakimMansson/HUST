@@ -1,6 +1,6 @@
 #include "Platform.h"
 #include "App_Common.h"
-#include "Functions.h"
+#include "ScreenConfiguration.h"
 #include "buffer.h"
 #include "Serial_CAN_FD.h"
 #include "VehicleController.h"
@@ -126,6 +126,7 @@ void clearCANDataArray() {
 
 /* ++++++++++++++++++++++ SCREEN GUI ++++++++++++++++++++++ */
 
+
 void start_screen() {
   char maxgas_char[20];
   char mingas_char[20];
@@ -141,14 +142,14 @@ void start_screen() {
 
   Start_Set_Display(phost);
 
-  /*---- Set boxes for text ---------*/
+  // ---- Set boxes for text --------- //
   draw_rect(phost, 10, 60, 200, 100, 70, 200, 200);
   draw_rect(phost, 280, 60, 470, 100, 70, 200, 200);
   draw_rect(phost, 10, 130, 200, 170, 70, 200, 200);
   draw_rect(phost, 280, 130, 470, 170, 70, 200, 200);
   //draw_rect(phost, 140, 200, 340, 230, 70, 200, 200);
 
-  /*--------- Input text to screen -------------*/
+  //--------- Input text to screen ------------- //
   Write_Text(phost, 195, 0, 30, "HUST");
   Write_Text(phost, 50, 10, 25, "Gas");
   Write_Text(phost, 360, 10, 25, "Break");
@@ -158,18 +159,24 @@ void start_screen() {
   Write_Text(phost, 280, 135, 25, minbreak_char);
   //Write_Text(phost, 140, 195, 25, current_char);
 
-  /*
-  if(!potentiometer_flag) {
-    Write_Text(phost, 10, 240, 21, "Set potentiometers to change display");
-    //Write_Text(phost, )
-  }
-  */
 
   Finish_Display(phost);
   delay(5);
 }
 
-/* Function for main screen*/
+void main_screen() {
+  Start_Set_Display(phost);
+
+  static double MPH_CONSTANT = 2.23694;
+  String currentVelocity = String((int)vehicleVelocity*MPH_CONSTANT) + " MPH";
+  Write_Text(phost, 195, 150, 30, currentVelocity.c_str());
+
+  Finish_Display(phost);
+  delay(5);
+}
+
+/*
+//Function for main screen
 void main_screen() {
     
     char velocity_char[25];
@@ -191,71 +198,10 @@ void main_screen() {
     //insert_line(phost, 440, 470, 10, 262);
     //insert_charging(phost, 0.7);
 
-    
-    /*---- For driving mode icon -----*/
-    if(driving_mode_error_flag) {
-      driving_mode_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2], driving_mode_counter, driving_mode_error_flag);
-    } else {
-      driving_mode_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2], driving_mode_counter, driving_mode_error_flag);
-    }
-    /*----- For battery icon --------*/
-    if(battery_error_flag) {
-      volt_battery_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
-    } else {
-      volt_battery_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
-    }
-  
-    /*---- For MC icon -------*/
-    if(mc_error_flag) {
-      mc_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
-    } else {
-      mc_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
-    }
-    
-    /*---- For Solar cell icon -----*/
-    if(solar_error_flag) {
-      solar_cell_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
-    } else {
-      solar_cell_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
-    }
-    
-    /*------- For main error flag -------*/
-    if(error_flag) {
-      error_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
-    } else {
-      error_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
-    }
-    
-
-    if(cruise_control_flag) {
-      cruise_control_icon(phost, cruise_control_velocity);
-    }
-    /*----------- Economy --------------*/
-    //economy_icon(phost, economy_value);
-    
-    /*---------- Solar ----------*/
-    meter_icon(phost, 410, 465, 30, 200, solar_watt/solar_watt_max);
-
-    /*---------- MC ----------*/
-    meter_icon(phost, 340, 395, 30, 200, mc_watt/mc_watt_max);
-  
-    /*---------- voltage ----------*/
-    meter_icon(phost, 15, 70, 30, 200, packVoltage/packVoltageMax);
-
-    /*----- High Beam Symbol ------*/
-    if(high_beam_flag) {
-      high_beam(phost);   
-    }
-    /*---- High voltage symbol -----*/
-    if(high_voltage_flag)
-    {
-      high_voltage(phost);
-    }
-    /*---- ECO or RACE mode --------*/
-    //eco_or_racing_mode(phost, eco_or_race_mode_flag);
 
     Finish_Display(phost);
 }
+*/
 
 /* ------------------- SCREEN GUI ----------------------- */
 
@@ -266,9 +212,9 @@ void checkSwitchButtonMainStartScreen() {
 
   static unsigned long lastTimeButtonPress = millis();
   byte switchScreenButton = digitalRead(B2);
-  if(switchScreenButton == HIGH && millis() - lastTimeButtonPress > 700) {
+  if(switchScreenButton == HIGH) {
+    if (millis() - lastTimeButtonPress > 400) inStartScreen = !inStartScreen;
     //Serial.println("Screen changing");
-    inStartScreen = !inStartScreen;
     lastTimeButtonPress = millis();
   }
 }
@@ -328,7 +274,7 @@ void checkLightButtonCommands() {
   byte rightBlinkerButton = digitalRead(R1);
   if (rightBlinkerButton == HIGH) {
     if (millis() - lastTimeRightBlinkerButtonPress > 500) rightBlinkerOn = !rightBlinkerOn;
-    Serial.println("[checkLightButtonCommands] Toggling right blinker");
+    //Serial.println("[checkLightButtonCommands] Toggling right blinker");
     __dta[0] = rightBlinkerOn;
     can_send(0x011, 0, 0, 0, 8, __dta);
     lastTimeRightBlinkerButtonPress = millis();
@@ -489,7 +435,7 @@ void loop() {
         DecodeCANMsg(__id, __dta); 
       }
 
-        //main_screen(); // Show main_screen GUI
+        main_screen(); // Show main_screen GUI
 
         checkLightButtonCommands(); // Check if light buttons are pressed
         checkHornButtonCommand(); // Check if horn button is pressed

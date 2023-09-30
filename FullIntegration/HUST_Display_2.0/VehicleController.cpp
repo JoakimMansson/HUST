@@ -7,8 +7,10 @@
 
 
 
-void VehicleController::vehicleControlLoop(int &gas_N_reverse_potential, int &brake_potential) {
-
+void VehicleController::vehicleControlLoop(int gas_reverse_pot, int brake_pot) {
+  int gas_N_reverse_potential = gas_reverse_pot;
+  int brake_potential = brake_pot;
+  Serial.println(gas_N_reverse_potential);
   updateCurrentDrivingMode();
   enterCruiseControl();
   
@@ -20,7 +22,7 @@ void VehicleController::vehicleControlLoop(int &gas_N_reverse_potential, int &br
   applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
 
   // Sends drive commands to vehicle
-  controlCar(gas_N_reverse_potential, brake_potential);
+  controlCar((long)gas_N_reverse_potential, (long)brake_potential);
 
   last_gas_N_reverse_potential = gas_N_reverse_potential;
   last_brake_potential = brake_potential;
@@ -145,21 +147,22 @@ void VehicleController::brake(double brakePot) {
   //sendCAN(0x501, BRAKE_ARR);
 }
 
-void VehicleController::controlCar(double driveReversePot, double brakePot) {
+void VehicleController::controlCar(float driveReversePot, float brakePot) {
   // Input potential will be between 0 - 1024
-  driveReversePot = driveReversePot / 1023;//max_gas_potential;
-  brakePot = brakePot / 1023;//max_brake_potential;
+  //Serial.println("max:" + String(Max_gas_N_reverse_potential) + ", min: " + String(Min_gas_N_reverse_potential));
+  driveReversePot = mapFloat(driveReversePot, (float)Min_gas_N_reverse_potential, (float)Max_gas_N_reverse_potential, 0.0, 1.0);//max_gas_potential;
+  brakePot = mapFloat(brakePot, (float)Min_brake_potential, (float)Max_brake_potential, 0.0, 1.0);//max_brake_potential;
 
   can_send(0x502, 0, 0, 0, 8, BUS_VOLTAGE);
   //sendCAN(0x502, BUS_VOLTAGE); -- OLD WAY OF SENDING CAN
   /* ---------- NEUTRAL ----------- */
   if (isNeutral) {
-    Serial.println("[controlCar()] IS NEUTRAL");
+    //Serial.println("[controlCar()] IS NEUTRAL");
     can_send(0x501, 0, 0, 0, 8, DRIVE_ARR);
     //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
   /* ------------ DRIVING ------------- */
   } else if (isDriving) {
-    Serial.println("[controlCar()] IS DRIVING, POT: " + String(driveReversePot));
+    //Serial.println("[controlCar()] DRIVING, POT: " + String(driveReversePot));
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
@@ -173,7 +176,7 @@ void VehicleController::controlCar(double driveReversePot, double brakePot) {
     resetArrays();
     /* --------- REVERSING --------- */
   } else if (isReversing) {
-    Serial.println("[controlCar()] IS REVERSING, POT: " + String(driveReversePot));
+    //Serial.println("[controlCar()] IS REVERSING, POT: " + String(driveReversePot));
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
@@ -295,30 +298,37 @@ void VehicleController::applyCruiseControl(int& gas_N_reverse_potential, int& br
 void VehicleController::applyECOControl(int& gas_N_reverse_potential) {
   float potential_gap_error = gas_N_reverse_potential - last_gas_N_reverse_potential;
 
-  if(potential_gap_error > 10 && hasAppliedECO)
-  {
-    int ECOIncrementStep = 1; // Increase this for harder ACCELERATION in ECO
+  if (inECO) {
 
-    /*
-    debug("GAS BEFORE ECO: " + String(gas_N_reverse_potential));
-    */
-    ECOPotential += ECOIncrementStep;
-    gas_N_reverse_potential = ECOPotential;
-    /*
-    debug(", GAS AFTER ECO: " + String(gas_N_reverse_potential));
-    debugln();
-    */
   }
-  else if(potential_gap_error > 5 && !hasAppliedECO)
-  {
-    hasAppliedECO = true;
-    ECOPotential = last_gas_N_reverse_potential;
-  }
-  else
-  {
-    ECOPotential = 0;
-    hasAppliedECO = false;
-  }
+    if(potential_gap_error > 10 && hasAppliedECO)
+    {
+      int ECOIncrementStep = 1; // Increase this for harder ACCELERATION in ECO
+
+      /*
+      debug("GAS BEFORE ECO: " + String(gas_N_reverse_potential));
+      */
+      ECOPotential += ECOIncrementStep;
+      gas_N_reverse_potential = ECOPotential;
+      /*
+      debug(", GAS AFTER ECO: " + String(gas_N_reverse_potential));
+      debugln();
+      */
+    }
+    else if(potential_gap_error > 5 && !hasAppliedECO)
+    {
+      hasAppliedECO = true;
+      ECOPotential = last_gas_N_reverse_potential;
+    }
+    else
+    {
+      ECOPotential = 0;
+      hasAppliedECO = false;
+    }
 }
 
 /* ----------- ECO CONTROL ----------- */
+
+float VehicleController::mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
