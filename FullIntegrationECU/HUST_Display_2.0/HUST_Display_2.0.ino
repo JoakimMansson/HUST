@@ -1,6 +1,6 @@
 #include "Platform.h"
 #include "App_Common.h"
-#include "ScreenConfiguration.h"
+#include "Functions.h"
 #include "buffer.h"
 #include "Serial_CAN_FD.h"
 #include "CANDecoder.h"
@@ -160,14 +160,90 @@ void start_screen() {
 }
 
 void main_screen() {
-  Start_Set_Display(phost);
+    
+    char velocity_char[25];
+    char voltage_diff_char[20];
+    char current_char[20];
 
-  static double MPH_CONSTANT = 2.23694;
-  String currentVelocity = String((int)vehicleVelocity*MPH_CONSTANT) + " MPH";
-  Write_Text(phost, 195, 150, 30, currentVelocity.c_str());
 
-  Finish_Display(phost);
-  delay(5);
+    sprintf(velocity_char, "%s [mph]", String(25).c_str());
+    sprintf(voltage_diff_char, "Volt diff:%s", String(voltage_diff).c_str());
+    sprintf(current_char, "Current:%s", String(current).c_str());
+
+    Start_Set_Display(phost);
+    //draw_rect(phost, 120 , 35, 300, 75); 
+    //Write_Text(phost, 195, 0, 30, "Hust");
+    Write_Text(phost, 210, 80, 31, String(int(25)).c_str());
+    Write_Text(phost, 190, 115, 30, "mph");
+    //Write_Text(phost, 10, 80, 22, voltage_diff_char);
+    //Write_Text(phost, 10, 100, 22, current_char);
+    //insert_line(phost, 440, 470, 10, 262);
+    //insert_charging(phost, 0.7);
+
+    /*
+    //---- For driving mode icon -----
+    if(driving_mode_error_flag) {
+      driving_mode_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2], driving_mode_counter, driving_mode_error_flag);
+    } else {
+      driving_mode_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2], driving_mode_counter, driving_mode_error_flag);
+    }
+    //----- For battery icon --------//
+    if(battery_error_flag) {
+      volt_battery_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
+    } else {
+      volt_battery_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
+    }
+  
+    //---- For MC icon -------//
+    if(mc_error_flag) {
+      mc_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
+    } else {
+      mc_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
+    }
+    
+    //---- For Solar cell icon -----//
+    if(solar_error_flag) {
+      solar_cell_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
+    } else {
+      solar_cell_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
+    }
+    
+    //------- For main error flag -------//
+    if(error_flag) {
+      error_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
+    } else {
+      error_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
+    }
+    
+
+    if(cruise_control_flag) {
+      cruise_control_icon(phost, cruise_control_velocity);
+    }
+    //----------- Economy --------------//
+    economy_icon(phost, economy_value);
+    
+    //---------- Solar ----------//
+    meter_icon(phost, 410, 465, 30, 200, solar_watt/solar_watt_max);
+
+    //---------- MC ----------//
+    meter_icon(phost, 340, 395, 30, 200, mc_watt/mc_watt_max);
+  
+    //---------- voltage ----------//
+    meter_icon(phost, 15, 70, 30, 200, PackVoltage/PackVoltageMax);
+
+    //----- High Beam Symbol ------//
+    if(high_beam_flag) {
+      high_beam(phost);   
+    }
+    //---- High voltage symbol -----//
+    if(high_voltage_flag)
+    {
+      high_voltage(phost);
+    }
+    //---- ECO or RACE mode --------//
+    eco_or_racing_mode(phost, eco_or_race_mode_flag);
+    */
+    Finish_Display(phost);
 }
 
 /*
@@ -387,16 +463,18 @@ void checkButtonsIncreaseDecreaseCruiseSpeed() {
 
 void sendPotentials(int gasPotential, int brakePotential) {
   // Storing a float into the array
-  float gasPot = mapFloat((float)gasPotential, min_gas, max_gas, 1.0, 0.0)
-  memcpy(__dta, &gasPot, sizeof(float));
+  long mappedGasPot = map((long)gasPotential, (long)min_gas, (long)max_gas, 0, 1023);
+  //float gasPot = mapFloat((float)gasPotential, min_gas, max_gas, 0.0, 1.0);
+  memcpy(__dta, &mappedGasPot, sizeof(long));
   can_send(0x050, 0, 0, 0, 8, __dta);
 
   // EXTRACT LIKE THIS:
-  //float extractedValue;
-  //memcpy(&extractedValue, __dta, sizeof(float));
+  //long extractedValue;
+  //memcpy(&extractedValue, __dta, sizeof(long));
 
-  float brakePot = mapFloat((float)brakePotential, min_break, max_break, 1.0, 0.0)
-  memcpy(__dta, &brakePot, sizeof(float));
+  long mappedBrakePot = map((long)brakePotential, (long)min_break, (long)max_break, 0, 1023);
+  //float brakePot = mapFloat((float)brakePotential, min_break, max_break, 0.0, 1.0);
+  memcpy(__dta, &mappedBrakePot, sizeof(long));
   can_send(0x051, 0, 0, 0, 8, __dta);
 }
 
@@ -502,15 +580,21 @@ void loop() {
 
         main_screen(); // Show main_screen GUI
 
+        
         checkLightButtonCommands(); // Check if light buttons are pressed
+        
         checkHornButtonCommand(); // Check if horn button is pressed
         //checkEnterRaceOrECOButton(); // Check if race/eco button is pressed
+        
         checkActivateHighVoltage(); // Check if should activate high voltage
         checkGearModeButton(); // Check if driving mode (neutral/reverse/drive) is rotated
+        //main_screen(); // Show main_screen GUI
         checkActivateHighBeam();
         checkEnterCruise();
-        
+        //main_screen(); // Show main_screen GUI
+
         sendPotentials(gasPotential, brakePotential);
+        
         
 
     }

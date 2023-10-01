@@ -33,6 +33,7 @@ double MMPTOutputPower = 0.0;
 static double MPPT_power_max = 2000;
 
 
+
 void DecodeCANMsg(long __id, const char* __dta) {
     
     /*********** Motor Controller ***********/

@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "Serial_CAN_FD.h"
+#include "VehicleController.h"
+#include "CANDecoder.h"
 
 // For debugging
 #define DEBUG 1
@@ -23,6 +25,7 @@ SoftwareSerial can_serial(can_tx, can_rx);
 #define left_blinker_pin 1
 #define right_blinker_pin 2
 #define horn_pin 3 
+#define high_beam_pin 4 
 
 // CAN Variables
 unsigned long __id = 0;
@@ -61,24 +64,11 @@ int uart_available()
     return uart_can.available();
 }
 
-void setup() 
-{
-  Serial.begin(9600);
+/* +++++++++++++++ LIGHTS & HORN +++++++++++++++ */
 
-  /* 
-  * IMPORTANT! DEFINE THE CORRECT DIGITAL PINS BELOW
-  */
-  //pinMode(left_blinker_pin, OUTPUT); // Left blinker
-  //pinMode(right_blinker_pin, OUTPUT); // Right blinker
-  //pinMode(horn_pin, OUTPUT); //
-
-
-  /* SETUP OF CAN MODULE */
-  uart_init(9600);
-  can_speed_20(500000);          // set can bus baudrate to 500k
+void highBeam(int toggleHighBeam) {
+  //digitalWrite(high_beam_pin, toggleHighBeam);
 }
-
-
 
 void blink() {
   static unsigned long lastBlink = millis();
@@ -111,12 +101,34 @@ void beep() {
   //digitalWrite(horn_pin, HIGH);
 }
 
+/* ------------- LIGHTS & HORN ------------- */
+
+void setup() 
+{
+  Serial.begin(9600);
+
+  /* 
+  * IMPORTANT! DEFINE THE CORRECT DIGITAL PINS BELOW
+  */
+  //pinMode(left_blinker_pin, OUTPUT); // Left blinker
+  //pinMode(right_blinker_pin, OUTPUT); // Right blinker
+  //pinMode(horn_pin, OUTPUT); //
+
+
+  /* SETUP OF CAN MODULE */
+  uart_init(9600);
+  can_speed_20(500000);          // set can bus baudrate to 500k
+}
 
 void loop() 
 {
+  static bool inStartScreen = true;
+  static int gasPotential = 0;
+  static int brakePotential = 0;
 
   if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta))
     {
+      /*
         Serial.print("GET DATA FROM: 0x");
         Serial.println(__id, HEX);
         Serial.print("EXT = ");
@@ -127,12 +139,13 @@ void loop()
         Serial.println(__fdf);
         Serial.print("LEN = ");
         Serial.println(__len);
+        */
         
 
-        Serial.println("ID: " + String(__id) + ", DATA: " + String(__dta[0]));
-        int toggle = atoi(__dta);
+        //Serial.println("ID: 0x" + String(__id) + ", DATA: " + String(__dta[0]));
+        /* LEFT BLINKER */
         if (__id == 0x010) { // Left blinker
-
+            int toggle = atoi(__dta);
             if(toggle == 1) {
               isLeftBlinker = true;
               isRightBlinker = false;
@@ -140,9 +153,10 @@ void loop()
             else {
               isLeftBlinker = false;
             }
-
-        } else if (__id == 0x11) { // Right blinker
-
+        }
+        /* RIGHT BLINKER */
+        else if (__id == 0x011) { // Right blinker
+            int toggle = atoi(__dta);
             if(toggle == 1) {
               isLeftBlinker = false;
               isRightBlinker = true;
@@ -150,10 +164,10 @@ void loop()
             else {
               isRightBlinker = false;
             }
-
-        } else if (__id == 0x12) { // Warning lights
-
-          if(toggle == 1) {
+        } 
+        /* WARNING LIGHTS */
+        else if (__id == 0x012) { // Warning lights
+          if(atoi(__dta) == 1) {
               isLeftBlinker = false;
               isRightBlinker = false;
               isWarningLights = true;
@@ -161,13 +175,58 @@ void loop()
             else {
               isWarningLights = false;
             }
-
-        } else if (__id == 0x20) { // Horn 
+        }
+        /* HIGH BEAM */
+        else if (__id == 0x016) { // High beam
+          highBeam(atoi(__dta));
+        }
+        /* HORN */
+        else if (__id == 0x020) { // Horn 
           beep();
         }
+        /* GAS POTENTIAL */
+        else if (__id == 0x050) { // Gas potential
+          long extractedPotential;
+          memcpy(&extractedPotential, __dta, sizeof(long));
+          extractedPotential -= 8; // Offset
+          if(extractedPotential < 0) extractedPotential = 0;
+          if(extractedPotential > 1023) extractedPotential = 1023;
+          Serial.println("GasPot (long): " + String(extractedPotential));
+        }
+        /* BRAKE POTENTIAL */
+        else if (__id == 0x051) { // Brake potential
+          long extractedPotential;
+          memcpy(&extractedPotential, __dta, sizeof(long));
+          extractedPotential -= 8; // Offset
+          if(extractedPotential < 0) extractedPotential = 0;
+          if(extractedPotential > 1023) extractedPotential = 1023;
+          Serial.println("BrakePot (long): " + String(extractedPotential));
+        }
+        /* DRIVING MODE */
+        else if (__id == 0x013) { // Driving mode
+          ECU.drivingMode = __dta[0];
+        }
+        else if (__id == 0x014) { // In cruising
+          ECU.inCruising = __dta[0];
+        }
+        else if (__id == 0x017) { // Inc Dec Cruise Speed
+          if (__dta[0] == 0) ECU.decreaseCruiseSpeed();
+          else ECU.IncreaseCruiseSpeed(); 
+        }
+        else if (__id == 0x030) { // In start screen
+          inStartScreen = __dta[0];
+        }
+        else {
+          DecodeCANMsg(__id, __dta);
+        }
+
     }
     
   blink();
+  if (!inStartScreen) {
+    //ECU.vehicleControlLoop(gasPotential, brakePotential);
+  }
+
   
 }
 
