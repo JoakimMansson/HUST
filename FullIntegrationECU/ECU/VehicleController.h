@@ -23,9 +23,9 @@ class VehicleController
             *IMPORTANT* 
         UPDATE THESE MIN/MAX POTENTIALS 
     */
-        int Max_gas_N_reverse_potential = 0;
+        int Max_gas_N_reverse_potential = 1023;
         int Min_gas_N_reverse_potential = 0;
-        int Max_brake_potential = 0;
+        int Max_brake_potential = 1023;
         int Min_brake_potential = 0;
 
         void decreaseCruiseSpeed();
