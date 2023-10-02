@@ -1,13 +1,8 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "Serial_CAN_FD.h"
-// LAPTOP
-#include "/home/joakim/Github/HUST/LoRa/RAK811.h"
-#include "/home/joakim/Github/HUST/LoRa/RAK811.cpp"
+#include "RAK811.h"
 
-// STATIONARY
-//#include "C:\Users\jocke\Desktop\GitStuff\LoRa-communication\RAK811.h"
-//#include "C:\Users\jocke\Desktop\GitStuff\LoRa-communication\RAK811.cpp"
 
 // For debugging
 #define DEBUG 1
@@ -20,15 +15,12 @@
 #define debug(x)
 #endif
 
-#define TXpin 11 
-#define RXpin 10
 #define WORK_MODE LoRaP2P   //  LoRaWAN or LoRaP2P
 #define TXpin 11   // Set the virtual serial port pins
 #define RXpin 10
 SoftwareSerial RAKSerial(RXpin,TXpin);    // Declare a virtual serial port
 int RESET_PIN = 12;
 int ERROR_PIN = 13;
-int SERIAL_AVAILABLE_PIN = 9;
 RAK811 RAKLoRa(RAKSerial,Serial);
 
 #define can_tx  8           // tx of serial can module connect to D2
@@ -124,177 +116,6 @@ void set_uart_LoRa(int current_LoRa_baud, int new_LoRa_baud)
   digitalWrite(RESET_PIN, HIGH);    // then high to enable
 }
 
-
-// For motor controller
-// Function to extract a specified number of bytes from a string (IEEE754) and convert to decimal number
-double extractBytesToDecimal(String data, int startByte, int numBytes) {
-
-  // Calculate startbyte index position ex. startByte: 4 = index: 14 (65 160 0 0 68 (250 0 0 1027))
-  int startIndex = 0;
-  int byteCounter = 0; // Bytes inc. for each " "
-  for(int i = 0; i < data.length(); i++)
-  {
-
-    if(byteCounter == startByte)
-    {
-      startIndex = i;
-      break;
-    }
-
-    if(data.substring(i, i+1) == " ")
-    {
-      byteCounter++;
-    }
-  
-  }
-
-  //debugln("Start index: " + String(startIndex));
-
-  byte bytes[numBytes];
-
-  byteCounter = 0;
-  String byte_data = "";
-  for(int i = startIndex; i < data.length(); i++)
-  {
-
-    String data_substr = data.substring(i, i+1);
-
-    if(byteCounter == numBytes)
-    {
-      break;
-    }
-    else if(data_substr == " ")
-    {
-      //debugln(byte_data);
-      bytes[byteCounter] = (byte) strtoul(byte_data.c_str(), NULL, 10);
-      byteCounter++;
-      byte_data = "";
-    }
-    else
-    {
-      byte_data += data_substr; 
-    }
-
-  }
-  /* For debugging of output bytes
-  for(int i = 0; i < numBytes; i++)
-  {
-    debug(bytes[i]);
-    debug(" ");
-  }
-  debugln();
-  */
-  
-  double value;
-  memcpy(&value, bytes, numBytes);
-  // Return the decimal value
-  return value;
-}
-
-double extractSingleByte(String data, int startByte)
-{
-  // Calculate startbyte index position ex. startByte: 4 = index: 14 (65 160 0 0 68 (250 0 0 1027))
-  int startIndex = 0;
-  int byteCounter = 0; // Bytes inc. for each " "
-  for(int i = 0; i < data.length(); i++)
-  {
-
-    if(byteCounter == startByte)
-    {
-      startIndex = i;
-      break;
-    }
-
-    if(data.substring(i, i+1) == " ")
-    {
-      byteCounter++;
-    }
-  }
-
-  byteCounter = 0;
-  String byte_data = "";
-  double MPPTdata = 0;
-  for(int i = startIndex; i < data.length(); i++)
-  {
-
-    String data_substr = data.substring(i, i+1);
-
-
-    if(data_substr == " ")
-    {
-      byteCounter++;
-
-      if(byteCounter == 1)
-      {
-        MPPTdata = byte_data.toDouble();
-        break;
-      }
-    }
-    else
-    {
-      byte_data += data_substr; 
-    }
-  }
-
-  return MPPTdata;
-}
-
-double extractDataMPPT(String data, int startByte, int numBytes)
-{
-  // Calculate startbyte index position ex. startByte: 4 = index: 14 (65 160 0 0 68 (250 0 0 1027))
-  int startIndex = 0;
-  int byteCounter = 0; // Bytes inc. for each " "
-  for(int i = 0; i < data.length(); i++)
-  {
-
-    if(byteCounter == startByte)
-    {
-      startIndex = i;
-      break;
-    }
-
-    if(data.substring(i, i+1) == " ")
-    {
-      byteCounter++;
-    }
-  
-  }
-  //debugln("Start index: " + String(startIndex));
-
-  byteCounter = 0;
-  String byte_data = "";
-  double MPPTdata = 0;
-  for(int i = startIndex; i < data.length(); i++)
-  {
-
-    String data_substr = data.substring(i, i+1);
-
-    if(byteCounter == numBytes)
-    {
-      break;
-    }
-    else if(data_substr == " ")
-    {
-      byteCounter++;
-
-      if(byteCounter == 1)
-      {
-        MPPTdata += 256*byte_data.toDouble();
-      }
-      else
-      {
-        MPPTdata += byte_data.toDouble();
-      }
-      byte_data = "";
-    }
-    else
-    {
-      byte_data += data_substr; 
-    }
-  }
-
-  return MPPTdata;
-}
 
 void update_data(String ID, String data)
 {
@@ -419,8 +240,6 @@ void setup()
 {
   pinMode(RESET_PIN, OUTPUT);
   pinMode(ERROR_PIN, OUTPUT);
-  pinMode(SERIAL_AVAILABLE_PIN, OUTPUT);
-  pinMode(9, INPUT);
   
   Serial.begin(9600);
   

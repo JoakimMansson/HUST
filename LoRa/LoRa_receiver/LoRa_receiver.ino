@@ -1,19 +1,7 @@
-#include "Serial_CAN_FD.h"
+#include "RAK811.h"
 #include <SoftwareSerial.h>
 
-// LAPTOP
-#include "C:\Users\jocke\OneDrive\Skrivbord\GitHub\LoRa-communication\RAK811.h"
-#include "C:\Users\jocke\OneDrive\Skrivbord\GitHub\LoRa-communication\RAK811.cpp"
 
-// STATIONARY
-//#include "C:\Users\jocke\Desktop\GitStuff\LoRa-communication\RAK811.h"
-//#include "C:\Users\jocke\Desktop\GitStuff\LoRa-communication\RAK811.cpp"
-
-#define can_tx  8           // tx of serial can module connect to D2
-#define can_rx  9           // rx of serial can module connect to D3
-
-SoftwareSerial can_serial(can_tx, can_rx);
-#define uart_can    can_serial
 
 #define TXpin 11
 #define RXpin 10
@@ -45,28 +33,6 @@ void setUART(int current_LoRa_baud, int new_LoRa_baud)
   digitalWrite(RESET_PIN, HIGH);    // then high to enable
 }
 
-/* ------------------- CAN ------------------- */
-void uart_init(unsigned long baudrate)
-{
-    uart_can.begin(baudrate);
-}
-
-void uart_write(unsigned char c)
-{
-    uart_can.write(c);
-}
-
-unsigned char uart_read()
-{
-    return uart_can.read();
-}
-
-int uart_available()
-{
-    return uart_can.available();
-}
-
-/* ------------------- /CAN ------------------- */
 
 String remove_chars(String input_str)
 {
@@ -124,9 +90,6 @@ void setup()
   RAKSerial.setTimeout(5);
   Serial.setTimeout(5);
 
-  //Serial.begin(115200);
-  uart_init(9600);
-  can_speed_20(500000);          // set can bus baudrate to 500k
 
   //String setUART = RAKLoRa.rk_setUARTConfig(9600, 8, 0, 0, 0);
   //DebugSerial.println("UART conf. successful: " + String(setUART));
@@ -140,18 +103,7 @@ void loop()
   String data = RAKSerial.readStringUntil("\n");
   Serial.println("LoRa data: " + data);
   }
-  else if (millis() - lastTimeCANSent > 50){
-    unsigned long __id = 0x01;      // can id 
-    unsigned char __ext = 0;        // extended frame or standard frame
-    unsigned char __rtr = 0;        // remote frame or data frame
-    unsigned char __fdf = 0;        // can fd or can 2.0
-    unsigned char __len = 4;        // data length
-    unsigned char __dta[4] = {1, 2, 3, 4};      // data
 
-    can_send(__id, __ext, __rtr, __fdf, __len, __dta);
-    lastTimeCANSent = millis();
-    //delay(50);
-  }
   
 
 /*
