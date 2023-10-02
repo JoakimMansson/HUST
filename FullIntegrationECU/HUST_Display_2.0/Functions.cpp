@@ -185,13 +185,13 @@ void driving_mode_icon(Gpu_Hal_Context_t *phost, int r, int g, int b, int mode, 
 
   switch (mode) {
     case 0:
-      letter = 'R';
+      letter = 'N';
       break;
     case 1:
       letter = 'D';
       break;
     case 2:
-      letter = 'N';
+      letter = 'R';
       break;
     default:
       break;

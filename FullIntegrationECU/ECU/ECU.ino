@@ -206,13 +206,16 @@ void loop()
         else if (__id == 0x013) { // Driving mode
           ECU.drivingMode = __dta[0];
         }
+        /* CRUISING MODE */
         else if (__id == 0x014) { // In cruising
           ECU.inCruising = __dta[0];
         }
+        /* INC/DEC CRUISE SPEED */
         else if (__id == 0x017) { // Inc Dec Cruise Speed
           if (__dta[0] == 0) ECU.decreaseCruiseSpeed();
           else ECU.IncreaseCruiseSpeed(); 
         }
+        /* IN START SCREEN */
         else if (__id == 0x030) { // In start screen
           inStartScreen = __dta[0];
         }

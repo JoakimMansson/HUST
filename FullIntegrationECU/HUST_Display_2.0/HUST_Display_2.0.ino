@@ -4,6 +4,7 @@
 #include "buffer.h"
 #include "Serial_CAN_FD.h"
 #include "CANDecoder.h"
+#include "GlobalVariablesReceive.h"
 #include <SoftwareSerial.h>
 
 /* DEFINING BUTTON PINS */
@@ -51,6 +52,9 @@ static byte rgb_white[] = {250, 250, 250}; // White color
 
 // Flags and Modes
 bool inStartScreen = true;
+bool inCruise = false;
+bool activeHighBeam = false;
+
 bool high_beam_flag = false;
 bool high_voltage_flag = true;
 bool battery_error_flag = true;
@@ -70,7 +74,9 @@ CircularBuffer gas_buffer(10);
 CircularBuffer break_buffer(10);
 
 // Vehicle Parameters
-int driving_mode_counter = 2; // 0: Neutral, 1: Drive, 2: Reverse
+int drivingModeCounter = 0; // 0: Neutral, 1: Drive, 2: Reverse
+
+
 int max_gas = 1;
 int min_gas = 2000;
 int max_break = 0;
@@ -82,8 +88,6 @@ int mc_watt = 20;
 int mc_watt_max = 100;
 int solar_watt = 20;
 int solar_watt_max = 100;
-int gas_potential;
-int break_potential;
 int last_brake_potential = 1 / 1337;
 int cruise_control_velocity = 100;
 
@@ -173,34 +177,35 @@ void main_screen() {
     Start_Set_Display(phost);
     //draw_rect(phost, 120 , 35, 300, 75); 
     //Write_Text(phost, 195, 0, 30, "Hust");
-    Write_Text(phost, 210, 80, 31, String(int(25)).c_str());
+    Write_Text(phost, 210, 80, 31, String(int(vehicleVelocity*2.23694)).c_str());
     Write_Text(phost, 190, 115, 30, "mph");
     //Write_Text(phost, 10, 80, 22, voltage_diff_char);
     //Write_Text(phost, 10, 100, 22, current_char);
     //insert_line(phost, 440, 470, 10, 262);
     //insert_charging(phost, 0.7);
 
-    /*
+    
     //---- For driving mode icon -----
     if(driving_mode_error_flag) {
-      driving_mode_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2], driving_mode_counter, driving_mode_error_flag);
+      driving_mode_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2], drivingModeCounter, driving_mode_error_flag);
     } else {
-      driving_mode_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2], driving_mode_counter, driving_mode_error_flag);
+      driving_mode_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2], drivingModeCounter, driving_mode_error_flag);
     }
-    //----- For battery icon --------//
-    if(battery_error_flag) {
+    
+    //----- For battery temperature icon --------//
+    if(avgTemperature > 50) { // if avg battery temp > 50 
       volt_battery_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
     } else {
       volt_battery_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
     }
-  
-    //---- For MC icon -------//
-    if(mc_error_flag) {
+    
+    //---- For MC temperature icon -------//
+    if(heatsinkTemp > 50 || motorTemp > 50) {
       mc_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
     } else {
       mc_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
     }
-    
+    /*
     //---- For Solar cell icon -----//
     if(solar_error_flag) {
       solar_cell_icon(phost, rbg_red[0], rbg_red[1], rbg_red[2]);
@@ -214,25 +219,26 @@ void main_screen() {
     } else {
       error_icon(phost, rgb_white[0], rgb_white[1], rgb_white[2]);
     }
+    */
     
 
-    if(cruise_control_flag) {
+    if(inCruise) {
       cruise_control_icon(phost, cruise_control_velocity);
     }
     //----------- Economy --------------//
-    economy_icon(phost, economy_value);
+    //economy_icon(phost, economy_value);
     
     //---------- Solar ----------//
-    meter_icon(phost, 410, 465, 30, 200, solar_watt/solar_watt_max);
+    meter_icon(phost, 410, 465, 30, 200, (MPPTOutputCurrent*MPPTOutputVoltage)/solar_watt_max);
 
     //---------- MC ----------//
-    meter_icon(phost, 340, 395, 30, 200, mc_watt/mc_watt_max);
+    meter_icon(phost, 340, 395, 30, 200, (busCurrent*busVoltage)/mc_watt_max);
   
     //---------- voltage ----------//
-    meter_icon(phost, 15, 70, 30, 200, PackVoltage/PackVoltageMax);
+    meter_icon(phost, 15, 70, 30, 200, packVoltage/packVoltageMax);
 
     //----- High Beam Symbol ------//
-    if(high_beam_flag) {
+    if(activeHighBeam) {
       high_beam(phost);   
     }
     //---- High voltage symbol -----//
@@ -241,8 +247,8 @@ void main_screen() {
       high_voltage(phost);
     }
     //---- ECO or RACE mode --------//
-    eco_or_racing_mode(phost, eco_or_race_mode_flag);
-    */
+    //eco_or_racing_mode(phost, eco_or_race_mode_flag);
+    
     Finish_Display(phost);
 }
 
@@ -306,6 +312,7 @@ void checkGearModeButton() {
     drivingMode = 2; // REVERSE
   }
   
+  drivingModeCounter = drivingMode;
   __dta[0] = drivingMode;
   can_send(0x013, 0, 0, 0, 8, __dta);
 }
@@ -322,6 +329,7 @@ void checkEnterCruise() {
 
   __dta[0] = inCruiseControl;
   can_send(0x014, 0, 0, 0, 8, __dta);
+  inCruise = inCruiseControl;
 
   if (inCruiseControl) checkButtonsIncreaseDecreaseCruiseSpeed();
 }
@@ -359,11 +367,12 @@ void checkActivateHighVoltage() {
 void checkActivateHighBeam() {
   static bool highBeamOn = false;
   static unsigned long lastTimeHighBeamButtonPress = millis();
-  byte highBeamButton = digitalRead(L1);
+  byte highBeamButton = digitalRead(L3);
   if (highBeamButton == HIGH) {
     if (millis() - lastTimeHighBeamButtonPress > 500) highBeamOn = !highBeamOn;
     //Serial.println("[checkLightButtonCommands] Toggling left blinker");
     //unsigned char __new_dta[1] = {(unsigned char)leftBlinkerOn};      // data
+    activeHighBeam = highBeamOn;
     __dta[0] = highBeamOn;
     can_send(0x016, 0, 0, 0, 8, __dta);
     lastTimeHighBeamButtonPress = millis();
@@ -585,13 +594,13 @@ void loop() {
         
         checkHornButtonCommand(); // Check if horn button is pressed
         //checkEnterRaceOrECOButton(); // Check if race/eco button is pressed
-        
+        main_screen(); // Show main_screen GUI
         checkActivateHighVoltage(); // Check if should activate high voltage
         checkGearModeButton(); // Check if driving mode (neutral/reverse/drive) is rotated
-        //main_screen(); // Show main_screen GUI
+        main_screen(); // Show main_screen GUI
         checkActivateHighBeam();
         checkEnterCruise();
-        //main_screen(); // Show main_screen GUI
+        main_screen(); // Show main_screen GUI
 
         sendPotentials(gasPotential, brakePotential);
         
