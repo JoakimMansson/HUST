@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
-#include "Serial_CAN_FD.h"
+//#include "Serial_CAN_FD.h"
 #include "VehicleController.h"
 #include "CANDecoder.h"
+#include "CANInitializer.h"
 
 // For debugging
 #define DEBUG 1
@@ -15,12 +16,12 @@
 #define debug(x)
 #endif
 
-#define can_tx  8           // tx of serial can module connect to D2
-#define can_rx  9           // rx of serial can module connect to D3
+//#define can_tx  8           // tx of serial can module connect to D2
+//#define can_rx  9           // rx of serial can module connect to D3
 
-SoftwareSerial can_serial(can_tx, can_rx);
+//SoftwareSerial can_serial(can_tx, can_rx);
 
-#define uart_can can_serial
+//#define uart_can can_serial
 
 #define left_blinker_pin 1
 #define right_blinker_pin 2
@@ -43,7 +44,7 @@ bool isWarningLights = false;
 
 VehicleController ECU;
 
-
+/*
 void uart_init(unsigned long baudrate)
 {
     uart_can.begin(baudrate);
@@ -63,10 +64,12 @@ int uart_available()
 {
     return uart_can.available();
 }
+*/
 
 /* +++++++++++++++ LIGHTS & HORN +++++++++++++++ */
 
 void highBeam(int toggleHighBeam) {
+  Serial.println("HighBeam: " + String(toggleHighBeam));
   //digitalWrite(high_beam_pin, toggleHighBeam);
 }
 
@@ -148,9 +151,11 @@ void loop()
             int toggle = atoi(__dta);
             if(toggle == 1) {
               isLeftBlinker = true;
-              isRightBlinker = false;
+              isRightBlinker = false;;
+              Serial.println("LeftBlinker: True");
             }
             else {
+              Serial.println("LeftBlinker: False");
               isLeftBlinker = false;
             }
         }
@@ -160,8 +165,10 @@ void loop()
             if(toggle == 1) {
               isLeftBlinker = false;
               isRightBlinker = true;
+              Serial.println("RightBlinker: True");
             }
             else {
+              Serial.println("RightBlinker: False");
               isRightBlinker = false;
             }
         } 
@@ -171,8 +178,10 @@ void loop()
               isLeftBlinker = false;
               isRightBlinker = false;
               isWarningLights = true;
+              Serial.println("WarningLights: True");
             }
             else {
+              Serial.println("WarningLights: False");
               isWarningLights = false;
             }
         }
@@ -186,29 +195,31 @@ void loop()
         }
         /* GAS POTENTIAL */
         else if (__id == 0x050) { // Gas potential
-          long extractedPotential;
-          memcpy(&extractedPotential, __dta, sizeof(long));
-          extractedPotential -= 8; // Offset
-          if(extractedPotential < 0) extractedPotential = 0;
-          if(extractedPotential > 1023) extractedPotential = 1023;
-          Serial.println("GasPot (long): " + String(extractedPotential));
+          long gasPotential;
+          memcpy(&gasPotential, __dta, sizeof(long));
+          //extractedPotential -= 8; // Offset
+          if(gasPotential < 0) gasPotential = 0;
+          if(gasPotential > 1023) gasPotential = 1023;
+          Serial.println("GasPot (long): " + String(gasPotential));
         }
         /* BRAKE POTENTIAL */
         else if (__id == 0x051) { // Brake potential
-          long extractedPotential;
-          memcpy(&extractedPotential, __dta, sizeof(long));
-          extractedPotential -= 8; // Offset
-          if(extractedPotential < 0) extractedPotential = 0;
-          if(extractedPotential > 1023) extractedPotential = 1023;
-          Serial.println("BrakePot (long): " + String(extractedPotential));
+          long brakePotential;
+          memcpy(&brakePotential, __dta, sizeof(long));
+          //extractedPotential -= 8; // Offset
+          if(brakePotential < 0) brakePotential = 0;
+          if(brakePotential > 1023) brakePotential = 1023;
+          Serial.println("BrakePot (long): " + String(brakePotential));
         }
         /* DRIVING MODE */
         else if (__id == 0x013) { // Driving mode
           ECU.drivingMode = __dta[0];
+          Serial.println("DrivingMode: " + String(ECU.drivingMode));
         }
         /* CRUISING MODE */
         else if (__id == 0x014) { // In cruising
-          ECU.inCruising = __dta[0];
+          ECU.inCruiseControl = __dta[0];
+          Serial.println("inCruising: " + String(ECU.inCruiseControl));
         }
         /* INC/DEC CRUISE SPEED */
         else if (__id == 0x017) { // Inc Dec Cruise Speed
@@ -226,11 +237,13 @@ void loop()
     }
     
   blink();
-  if (!inStartScreen) {
-    //ECU.vehicleControlLoop(gasPotential, brakePotential);
+  if (inStartScreen == 0) {
+    
   }
-
-  
+  unsigned char dta[] = {0, 2, 0, 0, 0, 0, 0, 0};
+  can_send(0x69, 0, 0, 0, 8, dta);
+  delay(3);
+  //ECU.vehicleControlLoop(gasPotential, brakePotential);
 }
 
 

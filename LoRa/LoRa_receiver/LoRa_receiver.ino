@@ -1,6 +1,5 @@
-#include "RAK811.h"
 #include <SoftwareSerial.h>
-
+#include "RAK811.h"
 
 
 #define TXpin 11
@@ -49,6 +48,53 @@ String remove_chars(String input_str)
   return new_str;
 }
 
+String extractDataAfter5thComma(String input) {
+  int commaCount = 0;
+  int startIndex = 0;
+
+  // Iterate through each character in the input string
+  for (int i = 0; i < input.length(); i++) {
+    if (input.charAt(i) == ',') {
+      commaCount++;
+
+      // If we have found the 5th comma, store its index
+      if (commaCount == 5) {
+        startIndex = i + 1;
+        break;
+      }
+    }
+  }
+
+  // Extract the substring after the 5th comma
+  String extractedData = input.substring(startIndex);
+
+  return extractedData;
+}
+
+
+int hexStringToInt(const String &hexValue) {
+  if (hexValue.length() != 6) {
+    // Ensure the input string has the correct length (6 characters).
+    return -1; // Return an error code (you can choose a different error code if needed).
+  }
+
+  // Extract the different parts of the hex string.
+  String idHex = hexValue.substring(0, 2);
+  String intHex = hexValue.substring(2, 5);
+  String decimalHex = hexValue.substring(5);
+
+  // Convert each part to integers.
+  int id = strtol(idHex.c_str(), NULL, 16);
+  int intValue = strtol(intHex.c_str(), NULL, 16);
+  int decimalValue = strtol(decimalHex.c_str(), NULL, 16);
+
+  // Combine the parts to form the final integer value.
+  int result = (id << 16) | (intValue << 8) | decimalValue;
+
+  return result;
+}
+
+
 void setup() 
 {
   pinMode(RESET_PIN, OUTPUT);
@@ -89,8 +135,8 @@ void setup()
 
   RAKSerial.setTimeout(5);
   Serial.setTimeout(5);
-
-
+  
+  Serial.println("START");
   //String setUART = RAKLoRa.rk_setUARTConfig(9600, 8, 0, 0, 0);
   //DebugSerial.println("UART conf. successful: " + String(setUART));
 }
@@ -98,13 +144,17 @@ void setup()
 void loop() 
 {
   int available = RAKSerial.available();
-  if (available) {
-  Serial.println("Data available: " + String(available));
-  String data = RAKSerial.readStringUntil("\n");
-  Serial.println("LoRa data: " + data);
+  if (available)
+  {
+    String data = RAKSerial.readStringUntil("\n");
+    data = data.substring(0, data.length()-2);
+    data = extractDataAfter5thComma(data);
+    
+    
+    //Serial.println(extractDataAfter5thComma(data));
   }
 
-  
+
 
 /*
   if(RAKSerial.available())
@@ -120,7 +170,7 @@ void loop()
       if(substring.equals(","))
       {
         break;
-      }
+      }const int integer
       else
       {
         filtered_data = substring + filtered_data;

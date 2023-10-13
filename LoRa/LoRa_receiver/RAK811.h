@@ -4,7 +4,7 @@
 #define LoRaP2P 1
 #define OTAA 0
 #define ABP 1
-#define STATUS_RECV_DATA  "at+recv=0,0,0"
+#define STATUS_RECV_DATA  ""
 #define STATUS_TX_COMFIRMED  "at+recv=1,0,0"
 #define STATUS_TX_UNCOMFIRMED  "at+recv=2,0,0"
 #define STATUS_JOINED_SUCCESS  "at+recv=3,0,0"

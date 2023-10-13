@@ -40,8 +40,7 @@ from kivy.metrics import dp
 import matplotlib.pyplot as plt
 
 from USB import USB
-from LoRa_Converter import LoRaConverter
-
+from LoRa_Converter import parse_hex_value
 
 DB = DBsqllite()
 
@@ -96,7 +95,12 @@ encodings = {
             47: "BusCurrentLimit",
             48: "Velocity",
             49: "MotorCurrent",
-            50: "OutputVoltagePWM"
+            50: "OutputVoltagePWM",
+            #MPPT
+            51: "MPPTInputVoltage",
+            52: "MPPTInputCurrent",
+            53: "MPPTOutputVoltage",
+            54: "MPPTOutputCurrent",
         }
 
 
@@ -113,37 +117,83 @@ class MainScreen(Screen):
         #print("Using port: " + str(self.USB.get_used_port()))
 
         # Used to convert string 1[99]0[69]5[99]5[69] -> [1.0, 5.5]
-        self.converter = LoRaConverter(define_comma_value="99", define_new_value="69")
+        self.USB = USB(baud=9600)
+        self.waiting_for_lora_connection = True
+        self.connection_established = str(self.USB.port)
 
-        self.connection_established = "False"
-        #self.read_lora = Clock.schedule_interval(lambda dt: self.read_LoRa_data(), 0.3)
-        self.upd_values = Clock.schedule_interval(lambda dt: self.update_data(), 1)
+        self.read_lora = Clock.schedule_interval(lambda dt: self.read_LoRa_data(), 0.3)
+        
+        #self.upd_values = Clock.schedule_interval(lambda dt: self.update_data(), 1)
 
     def read_LoRa_data(self):
-        data = self.USB.get_DIGITS_USB()
+        #data = self.USB.get_DIGITS_USB()
+        #self.packCurrent.text = "Bajs"
+        if self.waiting_for_lora_connection:
+            try:
+                serial_data = self.USB.get_filtered_serial()
+                print(serial_data)
+                if "START" in serial_data: 
+                    self.waiting_for_lora_connection = False
+                else: 
+                    print("Waiting for LoRa START...")
+            except Exception as e:
+                pass
+        else:
+            serial_data = self.USB.get_filtered_serial()
+            print(serial_data)
+
+            # Necessary for try & except since
+            # the serial read will include blank spaces.
+            try:
+                id_part, integer_part, decimal_part = parse_hex_value(serial_data)
+                table = encodings[id_part]
+                table_id = table[0].lower() + table[1:]
+                print(f"TableId: {table_id}, Digit: {integer_part}.{decimal_part}")
+                #print("Table: ", table, " ,Data: ", integer_part, decimal_digit)
+                
+                if self.within_limits_float(id_part):
+                    #exec("self." + str(table_id) + ".text =" + table + ": " + str(integer_part) + "." + str(decimal_digit))
+                    value = str(integer_part) + "." + str(decimal_part)
+                    exec("self."+table_id+".text ='" + table + ": " + value + "'")
+
+                    #exec("self." + id + ".color =" + str(color))
+                else:
+                    if integer_part == 1:
+                        color = (176/255, 18/255, 0/255)
+                        exec("self."+table_id+".color= color")
+                    else:
+                        color = (0/255, 109/255, 176/255)
+                        exec("self."+table_id+".color= color")
+                
+                
+                #Update table text <------
+                #print(f"ID: {id_part}, Integer: {integer_part},{decimal_digit}")
+            except Exception as e:
+                pass
+        
         
 
         # Keep only digits in data ex: "b'30133769\r\n" -> 30133769
-        data = re.sub("[^0-9]", "", data)
-        if data == "": return # return if regexed data is: ""
+        #data = re.sub("[^0-9]", "", data)
+        #if data == "": return # return if regexed data is: ""
 
-        data = self.converter.unparse_value(data) # data: ["data", "data", "data"]
-        print(data)
-        for i, data_element in enumerate(data):
-            if len(data_element) < 2: return #Return if data is ex: "1"
-            data_identifier = data_element[0] + data_element[1]
-            data_element = data_element[2:]
+        #data = self.converter.unparse_value(data) # data: ["data", "data", "data"]
+        #print(data)
+        #for i, data_element in enumerate(data):
+            #if len(data_element) < 2: return #Return if data is ex: "1"
+            #data_identifier = data_element[0] + data_element[1]
+            #data_element = data_element[2:]
 
             # Sometimes data is ex: "b'StartUP\\r\\n'"
-            if encodings.get(int(data_identifier)) != None:
-                table = encodings[int(data_identifier)]
-                print("Table: ", table, " ,Data: ", data_element)
-                try:
-                    DB.execCommmand("INSERT INTO " + table + "(" + table + ")" + " VALUES (" + str(data_element) + ")")
+            #if encodings.get(int(data_identifier)) != None:
+                #table = encodings[int(data_identifier)]
+                #print("Table: ", table, " ,Data: ", data_element)
+                #try:
+                    #DB.execCommmand("INSERT INTO " + table + "(" + table + ")" + " VALUES (" + str(data_element) + ")")
 
-                except Exception as e:
-                    print(e)
-                    continue
+                #except Exception as e:
+                    #print(e)
+                    #continue
         
 
 
@@ -163,23 +213,26 @@ class MainScreen(Screen):
             self.lightMode.text_color = "black"
             #self.lightMode.icon_color = "black"
 
-        self.update_color_theme()
+        self.update_color_theme_button_labels()
+        #self.update_data()
 
     # Updates buttons and labels to
     # corresponding theme light/dark
-    def update_color_theme(self):
+    def update_color_theme_button_labels(self):
         if current_theme_light:
             color = (0,0,0)
         else: 
             color = (1,1,1)
 
-        for i in range(10, 35):
+        for i in range(10, 50):
             # 17 < i < 25 are not affected by darkmode/lightmode
-            if 17 < i < 25: 
-                pass
-            else:
-                id = encodings[i][0].lower() + encodings[i][1:]
-                exec("self." + id + ".color =" + str(color))
+            id = encodings[i][0].lower() + encodings[i][1:]
+            exec("self." + id + ".color =" + str(color))
+            #if 17 < i < 25: 
+            #    pass
+            #else:
+            #    id = encodings[i][0].lower() + encodings[i][1:]
+            #    exec("self." + id + ".color =" + str(color))
 
         
         # BUTTONS
@@ -223,7 +276,6 @@ class MainScreen(Screen):
                 else:
                     color = (0/255, 109/255, 176/255)
                     exec("self."+Id+".color= color")
-
                 
 
     def within_limits_float(self, index):
@@ -406,7 +458,7 @@ class LoRaGUI(MDApp):
         self.theme_cls.theme_style = "Dark"
         
         #kv = Builder.load_file(os.path.realpath("my.kv"))
-        kv = Builder.load_file(os.path.realpath("C:/Users/jocke/OneDrive/Skrivbord/GitHub/LoRa-communication/LoRa_GUI/my.kv"))
+        kv = Builder.load_file(os.path.realpath("my.kv"))
         Window.size = (1200, 600)
         return kv
 

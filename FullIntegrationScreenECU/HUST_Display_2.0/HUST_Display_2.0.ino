@@ -1,10 +1,10 @@
 #include "Platform.h"
 #include "App_Common.h"
-#include "ScreenConfiguration.h"
+//#include "ScreenConfiguration.h"
+#include "Functions.h"
 #include "buffer.h"
-#include "Serial_CAN_FD.h"
 #include "VehicleController.h"
-#include "CANDecoder.h"
+//#include "CANDecoder.h"
 #include <SoftwareSerial.h>
 
 /* DEFINING BUTTON PINS */
@@ -25,14 +25,6 @@
 #define B3 7
 #define B4 6
 
-
-/* +++++ CAN VARIABLES +++++ */
-#define can_tx  2           // tx of serial can module connect to D2
-#define can_rx  3           // rx of serial can module connect to D3
-
-SoftwareSerial can_serial(can_tx, can_rx);
-
-#define uart_can can_serial
 
 unsigned long __id = 0;
 unsigned char __ext = 0; // extended frame or standard frame
@@ -55,17 +47,13 @@ VehicleController ECU;
 
 
 // Flags and Modes
-bool inStartScreen = true;
-bool high_beam_flag = false;
-bool high_voltage_flag = true;
-bool battery_error_flag = true;
-bool mc_error_flag = true;
-bool solar_error_flag = true;
-bool driving_mode_error_flag = true;
-bool error_flag = true;
-bool eco_or_race_mode_flag = true; // Eco mode (0), Race mode (1)
-bool cruise_control_flag = false;
-bool warningLights = false;
+bool inStartScreen = true; // If current screen is start
+bool potentialsSet = false; // If gas and brake potentials has been set
+bool highBeamActive = false; // If high beam is active
+bool leftBlinkerActive = false; // If left blinker is active
+bool rightBlinkerActive = false; // If right blinker active
+bool warningLightsActive = false; // If warning lights active
+bool halfLightActive = false; // If half lights active
 
 // Screen Data
 String global_data = "";
@@ -75,11 +63,12 @@ CircularBuffer gas_buffer(10);
 CircularBuffer break_buffer(10);
 
 // Vehicle Parameters
-int driving_mode_counter = 2; // 0: Neutral, 1: Drive, 2: Reverse
-int max_gas = 1;
-int min_gas = 2000;
-int max_break = 0;
-int min_break = 2000;
+int drivingModeCounter = 0; // 0: Neutral, 1: Drive, 2: Reverse
+int maxGas = 1;
+int minGas = 2000;
+int maxBrake = 0;
+int minBrake = 2000;
+
 int current = 0;
 int voltage_diff = 20;
 int battery_voltage_max = 100;
@@ -92,37 +81,8 @@ int break_potential;
 int last_brake_potential = 1 / 1337;
 int cruise_control_velocity = 100;
 
+bool connection_established_to_RPI = false;
 
-/* ++++++++++++++++++++++ CAN ++++++++++++++++++++++ */
-
-void uart_init(unsigned long baudrate)
-{
-    uart_can.begin(baudrate);
-}
-
-void uart_write(unsigned char c)
-{
-    uart_can.write(c);
-
-}
-
-unsigned char uart_read()
-{
-    return uart_can.read();
-}
-
-int uart_available()
-{
-    return uart_can.available();
-}
-
-void clearCANDataArray() {
-  for(int i = 0; i < 8; i++) {
-    __dta[i] = 0;
-  }
-}
-
-/* ----------------------- CAN ----------------------- */
 
 /* ++++++++++++++++++++++ SCREEN GUI ++++++++++++++++++++++ */
 
@@ -134,10 +94,10 @@ void start_screen() {
   char minbreak_char[20];
   char current_char[20];
 
-  sprintf(maxgas_char, "Max:%s", String(max_gas).c_str());
-  sprintf(mingas_char, "Min:%s", String(min_gas).c_str());
-  sprintf(maxbreak_char, "Max:%s", String(max_break).c_str());
-  sprintf(minbreak_char, "Min:%s", String(min_break).c_str());
+  sprintf(maxgas_char, "Max:%s", String(maxGas).c_str());
+  sprintf(mingas_char, "Min:%s", String(minGas).c_str());
+  sprintf(maxbreak_char, "Max:%s", String(maxBrake).c_str());
+  sprintf(minbreak_char, "Min:%s", String(minBrake).c_str());
   sprintf(current_char, "Current:%s", String(current).c_str());
 
   Start_Set_Display(phost);
@@ -151,57 +111,121 @@ void start_screen() {
 
   //--------- Input text to screen ------------- //
   Write_Text(phost, 195, 0, 30, "HUST");
-  Write_Text(phost, 50, 10, 25, "Gas");
-  Write_Text(phost, 360, 10, 25, "Break");
-  Write_Text(phost, 10, 65, 25, maxgas_char);
-  Write_Text(phost, 10, 135, 25, mingas_char);
-  Write_Text(phost, 280, 65, 25, maxbreak_char);
-  Write_Text(phost, 280, 135, 25, minbreak_char);
-  //Write_Text(phost, 140, 195, 25, current_char);
+  Write_Text(phost, 360, 10, 25, "Gas");
+  Write_Text(phost, 50, 10, 25, "Brake");
+  Write_Text(phost, 10, 65, 25, maxbreak_char);
+  Write_Text(phost, 10, 135, 25, minbreak_char);
+  Write_Text(phost, 280, 65, 25, maxgas_char);
+  Write_Text(phost, 280, 135, 25, mingas_char);
 
+  static unsigned long lastTimeSetPotentialsBlink = millis();
+  if (millis() - lastTimeSetPotentialsBlink > 300 && !potentialsSet) {
 
+    if (millis() - lastTimeSetPotentialsBlink > 1000) lastTimeSetPotentialsBlink = millis();
+    Write_Text_Color(phost, 135, 215, 16, "SET GAS &  BRAKE", 255, 1, 1);
+  }
+  
   Finish_Display(phost);
-  delay(5);
 }
 
 void main_screen() {
+
+
+  //sprintf(motor_temp_char, "Motor T:%s", String((motorTemp.toInt()).c_str());
+  //sprintf(heatsink_temp_char, "Current:%s", String(heatsinkTemp.toInt()).c_str());
+
   Start_Set_Display(phost);
 
-  static double MPH_CONSTANT = 2.23694;
-  String currentVelocity = String((int)vehicleVelocity*MPH_CONSTANT) + " MPH";
-  Write_Text(phost, 195, 150, 30, currentVelocity.c_str());
+  // ++++++ Velocity ++++++ //
+  Write_Text(phost, 225, 80, 31, String(vehicleVelocity).c_str());
+  // ----- Velocity ----- //
 
-  Finish_Display(phost);
-  delay(5);
-}
+  // ++++++ MC DATA ++++++ //
+  char motor_temp[25];
+  char heatsink_temp[25];
 
-/*
-//Function for main screen
-void main_screen() {
+  sprintf(motor_temp, "Motor T: %s", String(motorTemp).c_str());
+  sprintf(heatsink_temp, "Heatsink T: %s", String(heatsinkTemp).c_str());
+
+  Write_Text(phost, 350, 10, 30, "MC");
+  Write_Text(phost, 320, 50, 16, motor_temp);
+  Write_Text(phost, 320, 70, 16, heatsink_temp);
+  // ----- MC DATA ----- //
+
+
+  // ++++++ BMS DATA ++++++ //
+  char high_temp[20];
+  char low_temp[20];
+
+  sprintf(high_temp, "High T: %s", String(highTemperature).c_str());
+  sprintf(low_temp, "Low T: %s", String(lowTemperature).c_str());
+
+  Write_Text(phost, 20, 10, 30, "BMS");
+  Write_Text(phost, 20, 50, 16, high_temp);
+  Write_Text(phost, 20, 70, 16, low_temp);
+  // ----- BMS DATA ----- //
+
+  // ++++++ WARNING TEXT FOR TEMP ++++++ //
+
+  static unsigned long lastWarningTempTextBlink = 0;
+  bool tempWarning = highTemperature > 50 || motorTemp > 100 || heatsinkTemp > 60;
+  if (millis() - lastWarningTempTextBlink > 300 && tempWarning) {
+
+    if (millis() - lastWarningTempTextBlink > 1000) lastWarningTempTextBlink = millis();
+    Write_Text_Color(phost, 170, 135, 16, "CHECK TEMP", 255, 1, 1);
+  }
+
+  // ----- WARNING TEXT FOR TEMP ----- //
+
+  // ++++++ UI FOR LIGHTS ++++++ //
+  static unsigned long lastLightBlink = 0;
+  static const unsigned long blinkInterval = 500; // 500 ms interval
+
+  if (millis() - lastLightBlink >= blinkInterval) {
+
+    if (millis() - lastLightBlink >= 1000) lastLightBlink = millis(); // Update the last blink time
+
+
+    if (leftBlinkerActive) {
+      Write_Text_Color(phost, 200, 50, 16, "<-", 255, 192, 1);
+    } 
+    else if (rightBlinkerActive) {
+      Write_Text_Color(phost, 250, 50, 16, "->", 255, 192, 1);
+    } 
+    else if (warningLightsActive) {
+      Write_Text_Color(phost, 220, 50, 16, "<--->", 255, 192, 1);
+    }
+  }
+  // ----- UI FOR LIGHTS ----- //
+
+
+  // ++++++ SHOWING DRIVINGMODES ++++++ //
+  String letter = "";
+  switch (ECU.drivingMode) {
+    case 0: letter="N"; break;
+    case 1: letter="D"; break;
+    case 2: letter="R"; break;
+  }
+
+  Write_Text(phost, 225, 170, 31, letter.c_str());
+  Write_Text(phost, 210, 230, 23, "Mode");
+  insert_line(phost, 205, 275, 215, 265, 20);
+  // ----- SHOWING DRIVINGMODES ----- //
+  
+
+  // ++++++ SHOWING ICONS ++++++ //
+  if(ECU.inCruiseControl) {
+    cruise_control_icon(phost, vehicleVelocity);
+  }
+
+  if(highBeamActive) {
+    high_beam(phost);   
+  }
+  // ----- SHOWING ICONS ----- //
+
     
-    char velocity_char[25];
-    char voltage_diff_char[20];
-    char current_char[20];
-
-
-    sprintf(velocity_char, "%s [mph]", String((int)vehicleVelocity).c_str());
-    sprintf(voltage_diff_char, "Volt diff:%s", String((int)voltage_diff).c_str());
-    sprintf(current_char, "Current:%s", String((int)current).c_str());
-
-    Start_Set_Display(phost);
-    //draw_rect(phost, 120 , 35, 300, 75); 
-    //Write_Text(phost, 195, 0, 30, "Hust");
-    Write_Text(phost, 210, 80, 31, String((int)vehicleVelocity).c_str());
-    Write_Text(phost, 190, 115, 30, "mph");
-    //Write_Text(phost, 10, 80, 22, voltage_diff_char);
-    //Write_Text(phost, 10, 100, 22, current_char);
-    //insert_line(phost, 440, 470, 10, 262);
-    //insert_charging(phost, 0.7);
-
-
-    Finish_Display(phost);
+  Finish_Display(phost);
 }
-*/
 
 /* ------------------- SCREEN GUI ----------------------- */
 
@@ -213,8 +237,19 @@ void checkSwitchButtonMainStartScreen() {
   static unsigned long lastTimeButtonPress = millis();
   byte switchScreenButton = digitalRead(B2);
   if(switchScreenButton == HIGH) {
-    if (millis() - lastTimeButtonPress > 400) inStartScreen = !inStartScreen;
+    if (millis() - lastTimeButtonPress > 400) {
+      bool wasInStartScreen = inStartScreen;
+      inStartScreen = !inStartScreen;
+    
+      if (!wasInStartScreen && inStartScreen) { // RESET POTENTIALS IF GOING FROM MAIN SCREEN TO START SCREEN
+        maxGas = 0;
+        minGas = 2000;
+        maxBrake = 0;
+        minBrake = 2000;
+      }
+    } 
     //Serial.println("Screen changing");
+    
     lastTimeButtonPress = millis();
   }
 }
@@ -243,6 +278,7 @@ void checkEnterCruise() {
   }
 }
 
+/*
 void checkEnterRaceOrECOButton() {
   static unsigned long lastTimeModeButtonPress = millis();
   byte toggleModeButton = digitalRead(B4);
@@ -252,47 +288,66 @@ void checkEnterRaceOrECOButton() {
     lastTimeModeButtonPress = millis();
   }
 }
+*/
 
 void checkLightButtonCommands() {
 
   /* Left Blinker (CAN ID: 0x010) */
-  static bool leftBlinkerOn = false;
   static unsigned long lastTimeLeftBlinkerButtonPress = millis();
   byte leftBlinkerButton = digitalRead(L1);
   if (leftBlinkerButton == HIGH) {
-    if (millis() - lastTimeLeftBlinkerButtonPress > 500) leftBlinkerOn = !leftBlinkerOn;
+    if (millis() - lastTimeLeftBlinkerButtonPress > 500) leftBlinkerActive = !leftBlinkerActive;
     //Serial.println("[checkLightButtonCommands] Toggling left blinker");
     //unsigned char __new_dta[1] = {(unsigned char)leftBlinkerOn};      // data
-    __dta[0] = leftBlinkerOn;
-    can_send(0x010, 0, 0, 0, 8, __dta);
+    Serial.println("10 " + String(leftBlinkerActive));
+    
+    if (leftBlinkerActive) {
+      rightBlinkerActive = false;
+      warningLightsActive = false;
+    }
+    else {
+      leftBlinkerActive = false;
+    }
     lastTimeLeftBlinkerButtonPress = millis();
   }
 
   /* Right Blinker (CAN ID: 0x011) */
-  static bool rightBlinkerOn = false;
   static unsigned long lastTimeRightBlinkerButtonPress = millis();
   byte rightBlinkerButton = digitalRead(R1);
   if (rightBlinkerButton == HIGH) {
-    if (millis() - lastTimeRightBlinkerButtonPress > 500) rightBlinkerOn = !rightBlinkerOn;
+    if (millis() - lastTimeRightBlinkerButtonPress > 500) rightBlinkerActive = !rightBlinkerActive;
     //Serial.println("[checkLightButtonCommands] Toggling right blinker");
-    __dta[0] = rightBlinkerOn;
-    can_send(0x011, 0, 0, 0, 8, __dta);
+    Serial.println("11 " + String(rightBlinkerActive));
+    
+    if (rightBlinkerActive) {
+      leftBlinkerActive = false;
+      warningLightsActive = false;
+    }
+    else {
+      rightBlinkerActive = false;
+    }
     lastTimeRightBlinkerButtonPress = millis();
   }
 
   
   /* Warning Lights (CAN ID: 0x012) */
-  static bool warningLightsOn = false;
   static unsigned long lastTimeWarningLightsButtonPress = millis();
   byte warningLightsButton = digitalRead(B3);
   if (warningLightsButton == HIGH) {
-    if (millis() - lastTimeWarningLightsButtonPress > 500) warningLightsOn = !warningLightsOn;
+    if (millis() - lastTimeWarningLightsButtonPress > 500) warningLightsActive = !warningLightsActive;
     //Serial.println("[checkLightButtonCommands] Toggling warning lights");
-    __dta[0] = warningLightsOn;
-    can_send(0x012, 0, 0, 0, 8, __dta);
+    Serial.println("12 " + String(warningLightsActive));
+    
+    if (warningLightsActive) {
+      leftBlinkerActive = false;
+      rightBlinkerActive = false;
+    }
+    else {
+      warningLightsActive = false;
+    }
+
     lastTimeWarningLightsButtonPress = millis();
   }
-
 }
 
 void checkHornButtonCommand() {
@@ -300,12 +355,37 @@ void checkHornButtonCommand() {
   /* Horn (CAN ID: 0x020) */
   static unsigned long lastTimeHornButtonPress = millis();
   byte hornButton = digitalRead(B1);
-  if (hornButton == HIGH && millis() - lastTimeHornButtonPress > 200) {
+  if (hornButton == HIGH && millis() - lastTimeHornButtonPress > 100) {
     //Serial.println("[checkHornButtonCommand] Beeping horn");
-    __dta[0] = 1;
-    can_send(0x020, 0, 0, 0, 8, __dta);
+    Serial.println("13 1");
     lastTimeHornButtonPress = millis();
   }
+}
+
+void checkActivateHighBeam() {
+  static bool highBeamOn = false;
+  static unsigned long lastTimeHighBeamButtonPress = millis();
+  byte highBeamButton = digitalRead(L3);
+  if (highBeamButton == HIGH && millis() - lastTimeHighBeamButtonPress > 700) {
+    highBeamOn = !highBeamOn;
+    //Serial.println("[checkLightButtonCommands] Toggling left blinker");
+    //unsigned char __new_dta[1] = {(unsigned char)leftBlinkerOn};      // data
+    Serial.println("14 " + String(highBeamOn));
+    highBeamActive = highBeamOn;
+    lastTimeHighBeamButtonPress = millis();
+  }
+}
+
+void checkActivateHalfLight() {
+  static unsigned long lastTimeHalfLightButtonPress = millis();
+  byte halfLightButton = digitalRead(B4);
+  if (halfLightButton == HIGH && millis() - lastTimeHalfLightButtonPress > 500) {
+    halfLightActive = !halfLightActive;
+    Serial.println("15 " + String(halfLightActive));
+    
+    lastTimeHalfLightButtonPress = millis();
+  }
+  
 }
 
 void checkButtonsIncreaseDecreaseCruiseSpeed() {
@@ -313,7 +393,7 @@ void checkButtonsIncreaseDecreaseCruiseSpeed() {
   /* Increase Cruise Speed */
   static unsigned long lastTimeIncreaseButtonPress = millis();
   byte increaseButton = digitalRead(R2);
-  if (increaseButton == HIGH && millis() - lastTimeIncreaseButtonPress > 700) {
+  if (increaseButton == HIGH && millis() - lastTimeIncreaseButtonPress > 1000) {
     Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Increasing cruise speed");
     ECU.IncreaseCruiseSpeed();
     lastTimeIncreaseButtonPress = millis();
@@ -322,23 +402,30 @@ void checkButtonsIncreaseDecreaseCruiseSpeed() {
   /* Decrease Cruise Speed (CAN ID: 0x031) */
   static unsigned long lastTimeDecreaseButtonPress = millis();
   byte decreaseButton = digitalRead(R3);
-  if (decreaseButton == HIGH && millis() - lastTimeDecreaseButtonPress > 700) {
+  if (decreaseButton == HIGH && millis() - lastTimeDecreaseButtonPress > 1000) {
     //Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Decreasing cruise speed");
     ECU.decreaseCruiseSpeed();
     lastTimeDecreaseButtonPress = millis();
   }
 
-
 }
 
 /* ------------------- BUTTON INPUTS ----------------------- */
 
-int calculateNewMaxPotentials(float potential, float min, float max) {
-  int mappedValue = map(potential, 0, 1023, min, max);
-  //Serial.println(mappedValue/6);
-  return int(mappedValue/5);
+/* ++++++++++++++++++++++ CHECK IF POTENTIALS SET ++++++++++++++++++++++ */
+
+bool potentialsSetCheck() {
+  if (maxBrake - minBrake < 100 || maxGas - minGas < 100) {
+    potentialsSet = false;
+    return false;
+  }
+  else {
+    potentialsSet = true;
+    return true; 
+  } 
 }
 
+/* ------------------- CHECK IF POTENTIALS SET ----------------------- */
 
 void setup() {
   phost = &host;
@@ -351,7 +438,7 @@ void setup() {
 
   pinMode(L1, INPUT); // Left BLINKER (DIGITAL)
   pinMode(L2, INPUT); // Enter Cruise (DIGITAL)
-  pinMode(L3, INPUT); 
+  pinMode(L3, INPUT); // High Beam (DIGITAL)
 
   pinMode(R1, INPUT); // Right BLINKER (DIGITAL)
   pinMode(R2, INPUT); // INCREASE Cruise Speed (DIGITAL)
@@ -360,94 +447,141 @@ void setup() {
   pinMode(B1, INPUT); // Horn (DIGITAL)
   pinMode(B2, INPUT); // Switch between main- & start-screen (DIGITAL)
   pinMode(B3, INPUT); // Warning lights (DIGITAL)
-  pinMode(B4, INPUT); // Change driving mode ECO/RACE - (DIGITAL)
+  pinMode(B4, INPUT); // NOW: Change half light (DIGITAL), BEFORE: Change driving mode ECO/RACE - (DIGITAL)
 
   Serial.begin(9600);
 
-  /* INITIALIZE CAN*/
-  uart_init(9600);
-  can_speed_20(500000); // set can bus baudrate to 500k
+  unsigned long start_time = millis();
+  while(millis() - start_time < 8000) {Serial.println("STARTING_SCREEN");}
 }
 
 
 void loop() {
+  
+  checkActivateHighBeam(); // Check if high beam should toggle
+  checkActivateHalfLight(); // Check if half light should toggle
+  checkLightButtonCommands(); // Check if light buttons are pressed
+  checkHornButtonCommand(); // Check if horn button is pressed
 
-  int gasPotential = abs(analogRead(A1) - 1337);
-  int brakePotential = analogRead(A2);
+  int meanGas = 0;
+  int meanBrake = 0;
 
-  checkSwitchButtonMainStartScreen();
+  int i = 0;
+  while (i < 10) {
+    int gasPotential = analogRead(A2);
+    int brakePotential = abs(analogRead(A1) - 1337);
 
-  if (inStartScreen) {
-    static byte meanGasBrakeCounter = 0;
+    if (brakePotential > 1000) brakePotential = 999; // For kabel som glappar
+
     gas_buffer.add(gasPotential);
     break_buffer.add(brakePotential);
-    meanGasBrakeCounter++;
+    i++;
+  }
 
-  /* calc new mean for gas IF we have 10 potential values */
-  if (meanGasBrakeCounter > 10) {
-    int mean_gas = gas_buffer.get_mean(); // -1337 since potential is reversed
-    int mean_brake = break_buffer.get_mean();
+  
+  meanGas = gas_buffer.get_mean();
+  meanBrake = break_buffer.get_mean();
+
+  
+  /* TEST THIS POTENTIALS SET CHECK */
+  if (potentialsSetCheck() || !inStartScreen) {
+    checkSwitchButtonMainStartScreen();
+  }
+  
+
+  if (inStartScreen) {
+    
     
     /* Setting max || min GAS */
-    if (mean_gas > max_gas) {
-      max_gas = mean_gas;
-      ECU.Max_gas_N_reverse_potential = mean_gas;
+    if (meanGas > maxGas) {
+      maxGas = meanGas;
+      ECU.Max_gas_N_reverse_potential = meanGas;
     }
-    else if (mean_gas < min_gas) {
-      min_gas = mean_gas;
-      ECU.Min_gas_N_reverse_potential = mean_gas;
+    else if (meanGas < minGas) {
+      minGas = meanGas;
+      ECU.Min_gas_N_reverse_potential = meanGas;
     }
 
     /* Setting max || min BRAKE */
-    if (mean_brake > max_break) {
-      max_break = mean_brake;
-      ECU.Max_brake_potential = mean_brake;
+    if (meanBrake > maxBrake) {
+      maxBrake = meanBrake;
+      ECU.Max_brake_potential = meanBrake;
     }
-    else if (mean_brake < min_break) {
-      min_break = mean_brake;
-      ECU.Min_brake_potential = mean_brake;
+    else if (meanBrake < minBrake) {
+      minBrake = meanBrake;
+      ECU.Min_brake_potential = meanBrake;
     }
-
-    meanGasBrakeCounter = 0;
-  }
 
     start_screen(); // Show start_screen GUI
   }
   else {
-
-    if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta)) {
-        Serial.print("GET DATA FROM: 0x");
-        Serial.println(__id, HEX);
-        Serial.print("EXT = ");
-        Serial.println(__ext);
-        Serial.print("RTR = ");
-        Serial.println(__rtr);
-        Serial.print("FDF = ");
-        Serial.println(__fdf);
-        Serial.print("LEN = ");
-        Serial.println(__len);
-
-        /*
-        ** @DecodeCANMsg
-        ** Decodes CAN msg and updates the corresponding
-        ** variable in "GlobalVariableReceive.h"
-        */
-        DecodeCANMsg(__id, __dta); 
-      }
-
-        main_screen(); // Show main_screen GUI
-
-        checkLightButtonCommands(); // Check if light buttons are pressed
-        checkHornButtonCommand(); // Check if horn button is pressed
-        checkEnterRaceOrECOButton(); // Check if race/eco button is pressed
+  
+        //checkEnterRaceOrECOButton(); // Check if race/eco button is pressed
         checkGearModeButton(); // Check if driving mode (neutral/reverse/drive) is rotated
+        main_screen(); // Show main_screen GUI
+        
 
         if (ECU.inCruiseControl) { 
           checkButtonsIncreaseDecreaseCruiseSpeed(); // Check if should increase/decrease cruise speed
         }
+          
 
-        ECU.vehicleControlLoop(gasPotential, brakePotential);
+        static unsigned long lastSentPotential = millis();
+        if (millis() - lastSentPotential >= 70) {
+          ECU.vehicleControlLoop(meanGas, meanBrake);
+          lastSentPotential = millis();
+        }
+
+        if (Serial.available() > 0) {
+          /*
+          unsigned long startEmptyBufferTime = millis();
+          String latestData = ""; 
+          while (Serial.available() && millis() - startEmptyBufferTime < 20) {
+            char c = Serial.read();
+            if (c == '\n') {
+              latestData = "";  // Clear the buffer and start over for a new message
+            } else {
+              latestData += c;
+            }
+          }
+          */
+          
+          // Read the incoming data as a string
+          String data = Serial.readStringUntil('\n');
+
+          // Split the data by space
+          int spaceIndex = data.indexOf(' ');
+          if (spaceIndex != -1) {
+            // Extract the ID and vehicle velocity as separate strings
+            String idStr = data.substring(0, spaceIndex);
+            String dataStr = data.substring(spaceIndex + 1);
+
+            // Convert the strings to integers
+            int id = idStr.toInt();
+            if (id == 1) { // MC - Vehicle Velocity
+              vehicleVelocity = (int) dataStr.toDouble();
+            }
+            else if (id == 2) { // MC - Heatsink Temp
+              heatsinkTemp = (int) dataStr.toDouble();
+            }
+            else if (id == 3) { // MC - Motor Temp
+              motorTemp = (int) dataStr.toDouble();
+            }
+            else if (id == 4) { // HIGH_TEMP (THERMISTOR)
+              highTemperature = (int) dataStr.toDouble();
+            }
+            else if (id == 5) { // LOW_TEMP (THERMISTOR)
+              lowTemperature = (int) dataStr.toDouble();
+            }
+
+            
+            //0x600 [PACK_CURRENT, PACK_OPEN_VOLTAGE, CURRENT_LIMIT_STATUS, AVG_CURRENT, LOW_CELL_VOLTAGE, HIGH_CELL_VOLTAGE, INPUT_SUPPLY_VOLTAGE, RELAY STATE]
+            //0x601 [INTAKE_TEMP, INTERNAL_TEMP, HIGH_TEMP, LOW_TEMP, AVG_TEMP, PACK_AMP_HOURS, HIGH_THERMISTOR_ID, LOW_THERMISTOR_ID]
+            ///Serial.println(vehicleVelocity);
+          }
+        }
         
-
+        
+        main_screen(); // Show main_screen GUI
     }
 }

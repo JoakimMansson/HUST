@@ -4,11 +4,11 @@
 
 
 
-
 class VehicleController
 {
 
     public:
+        VehicleController();
         unsigned char DRIVE_ARR[8] = { 0, 0, 250, 68, 0, 0, 0, 0 }; // 2000 RPM
         unsigned char REVERSE_ARR[8] = { 0, 0, 250, 196, 0, 0, 0, 0 }; // -2000 RPM
         unsigned char NEUTRAL_ARR[8] = { 0, 0, 250, 68, 0, 0, 0, 0 }; // 2000 RPM
@@ -18,6 +18,8 @@ class VehicleController
         int drivingMode = 0; /* 0 = Neutral, 1 = Drive, 2 = Reverse */
         bool inECO = false;
         bool inCruiseControl = false;
+
+
 
     /* 
             *IMPORTANT* 

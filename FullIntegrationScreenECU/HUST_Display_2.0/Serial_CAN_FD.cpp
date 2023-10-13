@@ -111,7 +111,7 @@ void can_speed_fd(unsigned long speed_20, unsigned long speed_fd)
 
 void can_speed_20(unsigned long speed_20)
 {
-    can_speed_fd(speed_20, 4000000);
+    can_speed_fd(speed_20, 5000000);
 }
 
 void strProcess(int num)

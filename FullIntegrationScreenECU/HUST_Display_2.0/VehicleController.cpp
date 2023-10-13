@@ -10,19 +10,23 @@
 void VehicleController::vehicleControlLoop(int gas_reverse_pot, int brake_pot) {
   int gas_N_reverse_potential = gas_reverse_pot;
   int brake_potential = brake_pot;
-  Serial.println(gas_N_reverse_potential);
+  //Serial.println(gas_N_reverse_potential);
   updateCurrentDrivingMode();
-  enterCruiseControl();
+  //enterCruiseControl();
   
   /*
   debugln("gas_N_reverse_potential before: " + String(gas_N_reverse_potential) + ", brake: " + String(brake_potential));
   */
 
-  applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
-  applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
+  // EXIT CRUISE IF POTENTIAL > 100 is applied
+  //if (inCruiseControl && lastVehicleVelocity != 1/1337 && gas_reverse_pot - last_gas_N_reverse_potential > 100) {
+  //  inCruiseControl = false;
+  //}
+  //applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
+  //applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
 
   // Sends drive commands to vehicle
-  controlCar((long)gas_N_reverse_potential, (long)brake_potential);
+  controlCar((float)gas_N_reverse_potential, (float)brake_potential);
 
   last_gas_N_reverse_potential = gas_N_reverse_potential;
   last_brake_potential = brake_potential;
@@ -135,59 +139,153 @@ void VehicleController::brake(double brakePot) {
     brakePot = 0;
   }
   */
-
-  if (brakePot > 0.3) {brakePot = 0.3;} // LIMIT BRAKING TO 30%
-
+  
+  if (brakePot > 0.5) {brakePot = 0.5;} // LIMIT BRAKING TO 30%
+  //Serial.println("BrakePot: " + String(brakePot));
   String ieee754 = IEEE754(brakePot);
   IEEE754ToArray(BRAKE_ARR, ieee754);
   
-  Serial.print("BRAKE: ");
-  Serial.println(brakePot);
-  can_send(0x501, 0, 0, 0, 0, BRAKE_ARR);
+  //Serial.print("BRAKE: ");
+  //Serial.println(brakePot);
+
+  /*
+  char serialData[32]; // Assuming a maximum length
+  strcpy(serialData, "501");
+  for (int i = 0; i < 8; i++) {
+    char valueStr[10]; // Adjust the size as needed
+    itoa(BRAKE_ARR[i], valueStr, 10); // Convert int to string
+    strcat(serialData, " ");
+    strcat(serialData, valueStr);
+  }
+  Serial.println(serialData);
+  */
+
+  
+  String serialData = "501";
+  for (int i = 0; i < 8; i++) {
+    serialData += " " + String(BRAKE_ARR[i]);
+  }
+  Serial.println(serialData);
+  
+  //can_send(0x501, 0, 0, 0, 0, BRAKE_ARR);
   //sendCAN(0x501, BRAKE_ARR);
 }
 
 void VehicleController::controlCar(float driveReversePot, float brakePot) {
   // Input potential will be between 0 - 1024
   //Serial.println("max:" + String(Max_gas_N_reverse_potential) + ", min: " + String(Min_gas_N_reverse_potential));
-  driveReversePot = mapFloat(driveReversePot, (float)Min_gas_N_reverse_potential, (float)Max_gas_N_reverse_potential, 0.0, 1.0);//max_gas_potential;
-  brakePot = mapFloat(brakePot, (float)Min_brake_potential, (float)Max_brake_potential, 0.0, 1.0);//max_brake_potential;
+  driveReversePot = mapFloat(driveReversePot, (float)Min_gas_N_reverse_potential, (float)Max_gas_N_reverse_potential, 0, 1) - 0.05;//max_gas_potential;
+  brakePot = mapFloat(brakePot, (float)Min_brake_potential, (float)Max_brake_potential, 0, 1) - 0.05;//max_brake_potential;
 
-  can_send(0x502, 0, 0, 0, 8, BUS_VOLTAGE);
-  //sendCAN(0x502, BUS_VOLTAGE); -- OLD WAY OF SENDING CAN
+  driveReversePot = ((int)(driveReversePot*100))/100.0;
+  brakePot = ((int)(brakePot*100))/100.0;
+
+  if (driveReversePot < 0) driveReversePot = 0;
+  if (driveReversePot > 1) driveReversePot = 1;
+  if (brakePot < 0) brakePot = 0;
+  if (brakePot > 1) brakePot = 1;
+
+  //Serial.println("Mapped brake: " + String(brakePot) + ", Mapped gas: " + String(driveReversePot));
+
+  /*--------- TEST ----------*/
+  /*
+  char serialData[32]; // Assuming a maximum length
+  strcpy(serialData, "502");
+  for (int i = 0; i < 8; i++) {
+    char valueStr[10]; // Adjust the size as needed
+    itoa(BUS_VOLTAGE[i], valueStr, 10); // Convert int to string
+    strcat(serialData, " ");
+    strcat(serialData, valueStr);
+  }
+  Serial.println(serialData);
+  */
+  
+  String serialData = "502";
+  for (int i = 0; i < 8; i++) {
+    serialData += " " + String(BUS_VOLTAGE[i]);
+  }
+  Serial.println(serialData);
+
   /* ---------- NEUTRAL ----------- */
   if (isNeutral) {
-    //Serial.println("[controlCar()] IS NEUTRAL");
-    can_send(0x501, 0, 0, 0, 8, DRIVE_ARR);
-    //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
+  
+  /*
+  char serialData[32]; // Assuming a maximum length
+  strcpy(serialData, "501");
+  for (int i = 0; i < 8; i++) {
+    char valueStr[10]; // Adjust the size as needed
+    itoa(NEUTRAL_ARR[i], valueStr, 10); // Convert int to string
+    strcat(serialData, " ");
+    strcat(serialData, valueStr);
+  }
+  Serial.println(serialData);
+  */
+
+  String serialData = "501";
+  for (int i = 0; i < 8; i++) {
+    serialData += " " + String(NEUTRAL_ARR[i]);
+  }
+  Serial.println(serialData);
+
   /* ------------ DRIVING ------------- */
   } else if (isDriving) {
-    //Serial.println("[controlCar()] DRIVING, POT: " + String(driveReversePot));
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
-
-    //Inserting ieee754 values in DRIVE_ARR
     IEEE754ToArray(DRIVE_ARR, ieee754);
+        
+    if(driveReversePot == 0 && brakePot > 0 && vehicleVelocity >= 1) brake(brakePot);
+    else {
 
-    // Apply brake if driving = 0 & brake > 0
-    if(driveReversePot == 0 && brakePot > 0) brake(brakePot);
-    else can_send(0x501, 0, 0, 0, 8, DRIVE_ARR); //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
-    resetArrays();
+      /*
+      char serialData[32]; // Assuming a maximum length
+      strcpy(serialData, "501");
+      for (int i = 0; i < 8; i++) {
+        char valueStr[10]; // Adjust the size as needed
+        itoa(DRIVE_ARR[i], valueStr, 10); // Convert int to string
+        strcat(serialData, " ");
+        strcat(serialData, valueStr);
+      }
+      Serial.println(serialData);
+      */
+      
+      //Inserting ieee754 values in DRIVE_ARR
+      IEEE754ToArray(DRIVE_ARR, ieee754);
+      String serialData = "501";
+      for (int i = 0; i < 8; i++) {
+        serialData += " " + String(DRIVE_ARR[i]);
+      }
+      Serial.println(serialData);
+    }
+
     /* --------- REVERSING --------- */
   } else if (isReversing) {
-    //Serial.println("[controlCar()] IS REVERSING, POT: " + String(driveReversePot));
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
-
-    //Inserting ieee754 values in DRIVE_ARR
     IEEE754ToArray(REVERSE_ARR, ieee754);
+    
+    if(driveReversePot == 0 && brakePot > 0 && abs(vehicleVelocity) >= 1) brake(brakePot);
+    else {
+      /*
+      char serialData[32]; // Assuming a maximum length
+      strcpy(serialData, "501");
+      for (int i = 0; i < 8; i++) {
+        char valueStr[10]; // Adjust the size as needed
+        itoa(REVERSE_ARR[i], valueStr, 10); // Convert int to string
+        strcat(serialData, " ");
+        strcat(serialData, valueStr);
+      }
+      Serial.println(serialData);
+      */
 
-    // Apply brake if reversing = 0 else drive
-    if(driveReversePot == 0 && brakePot > 0) brake(brakePot);
-    else can_send(0x501, 0, 0, 0, 8, REVERSE_ARR); // sendCAN(0x501, REVERSE_ARR); -- OLD WAY OF SENDING CAN
-    resetArrays();
+      String serialData = "501";
+      for (int i = 0; i < 8; i++) {
+        serialData += " " + String(REVERSE_ARR[i]);
+      }
+      Serial.println(serialData);
+    }
+    
   }
 }
 

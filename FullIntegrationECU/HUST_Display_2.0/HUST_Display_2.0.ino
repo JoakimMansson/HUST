@@ -294,8 +294,16 @@ void checkSwitchButtonMainStartScreen() {
     lastTimeButtonPress = millis();
   }
 
+  static unsigned long lastTimeSentInStartScreen = millis();
+
   __dta[0] = inStartScreen;
-  can_send(0x030, 0, 0, 0, 8, __dta);
+  if (millis() - lastTimeSentInStartScreen > 100)
+  {
+    can_send(0x030, 0, 0, 0, 8, __dta);
+    lastTimeSentInStartScreen = millis();
+  }
+  
+  delay(2);
 }
 
 void checkGearModeButton() {
@@ -315,6 +323,7 @@ void checkGearModeButton() {
   drivingModeCounter = drivingMode;
   __dta[0] = drivingMode;
   can_send(0x013, 0, 0, 0, 8, __dta);
+  delay(2);
 }
 
 void checkEnterCruise() {
@@ -329,6 +338,7 @@ void checkEnterCruise() {
 
   __dta[0] = inCruiseControl;
   can_send(0x014, 0, 0, 0, 8, __dta);
+  delay(2);
   inCruise = inCruiseControl;
 
   if (inCruiseControl) checkButtonsIncreaseDecreaseCruiseSpeed();
@@ -375,6 +385,7 @@ void checkActivateHighBeam() {
     activeHighBeam = highBeamOn;
     __dta[0] = highBeamOn;
     can_send(0x016, 0, 0, 0, 8, __dta);
+    delay(2);
     lastTimeHighBeamButtonPress = millis();
   }
 }
@@ -391,6 +402,7 @@ void checkLightButtonCommands() {
     //unsigned char __new_dta[1] = {(unsigned char)leftBlinkerOn};      // data
     __dta[0] = leftBlinkerOn;
     can_send(0x010, 0, 0, 0, 8, __dta);
+    delay(2);
     lastTimeLeftBlinkerButtonPress = millis();
   }
 
@@ -403,6 +415,7 @@ void checkLightButtonCommands() {
     //Serial.println("[checkLightButtonCommands] Toggling right blinker");
     __dta[0] = rightBlinkerOn;
     can_send(0x011, 0, 0, 0, 8, __dta);
+    delay(2);
     lastTimeRightBlinkerButtonPress = millis();
   }
 
@@ -416,6 +429,7 @@ void checkLightButtonCommands() {
     //Serial.println("[checkLightButtonCommands] Toggling warning lights");
     __dta[0] = warningLightsOn;
     can_send(0x012, 0, 0, 0, 8, __dta);
+    delay(2);
     lastTimeWarningLightsButtonPress = millis();
   }
 
@@ -430,6 +444,7 @@ void checkHornButtonCommand() {
     //Serial.println("[checkHornButtonCommand] Beeping horn");
     __dta[0] = 1;
     can_send(0x020, 0, 0, 0, 8, __dta);
+    delay(2);
     lastTimeHornButtonPress = millis();
   }
 }
@@ -448,6 +463,7 @@ void checkButtonsIncreaseDecreaseCruiseSpeed() {
     Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Increasing cruise speed");
     __dta[0] = 1;
     can_send(0x017, 0, 0, 0, 8, __dta);
+    delay(2);
     lastTimeIncreaseButtonPress = millis();
   }
 
@@ -459,6 +475,7 @@ void checkButtonsIncreaseDecreaseCruiseSpeed() {
     //Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Decreasing cruise speed");
     __dta[0] = 0;
     can_send(0x017, 0, 0, 0, 8, __dta);
+    delay(2);
     lastTimeDecreaseButtonPress = millis();
   }
 
@@ -474,17 +491,26 @@ void sendPotentials(int gasPotential, int brakePotential) {
   // Storing a float into the array
   long mappedGasPot = map((long)gasPotential, (long)min_gas, (long)max_gas, 0, 1023);
   //float gasPot = mapFloat((float)gasPotential, min_gas, max_gas, 0.0, 1.0);
+  mappedGasPot -= 10;
+  if (mappedGasPot > 1023) mappedGasPot = 1023;
+  else if (mappedGasPot < 0) mappedGasPot = 0;
+  Serial.println("Gas: " + String(mappedGasPot));
   memcpy(__dta, &mappedGasPot, sizeof(long));
   can_send(0x050, 0, 0, 0, 8, __dta);
-
+  delay(2);
   // EXTRACT LIKE THIS:
   //long extractedValue;
   //memcpy(&extractedValue, __dta, sizeof(long));
 
   long mappedBrakePot = map((long)brakePotential, (long)min_break, (long)max_break, 0, 1023);
   //float brakePot = mapFloat((float)brakePotential, min_break, max_break, 0.0, 1.0);
+  mappedBrakePot -= 10;
+  if (mappedBrakePot > 1023) mappedBrakePot = 1023;
+  else if (mappedBrakePot < 0) mappedBrakePot = 0;
+  Serial.println("Brake: " + String(mappedBrakePot));
   memcpy(__dta, &mappedBrakePot, sizeof(long));
   can_send(0x051, 0, 0, 0, 8, __dta);
+  delay(2);
 }
 
 /* ------------------- SEND POTENTIALS ----------------------- */
@@ -568,6 +594,7 @@ void loop() {
   else {
 
     if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta)) {
+        /*
         Serial.print("GET DATA FROM: 0x");
         Serial.println(__id, HEX);
         Serial.print("EXT = ");
@@ -578,6 +605,7 @@ void loop() {
         Serial.println(__fdf);
         Serial.print("LEN = ");
         Serial.println(__len);
+        */
 
         /*
         ** @DecodeCANMsg
@@ -603,7 +631,6 @@ void loop() {
         main_screen(); // Show main_screen GUI
 
         sendPotentials(gasPotential, brakePotential);
-        
         
 
     }

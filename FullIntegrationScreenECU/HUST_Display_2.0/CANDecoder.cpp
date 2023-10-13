@@ -8,12 +8,12 @@
 unsigned long lastTimePointVelocityFetched = 0;
 
 // CANBUS Data
-double heatsinkTemp = 0.0;
-double motorTemp = 0.0;
+int heatsinkTemp = 0;
+int motorTemp = 0;
 double busCurrent = 0.0;
 double busVoltage = 0.0;
 double motorVelocity = 0.0;
-double vehicleVelocity = 0.0;
+int vehicleVelocity = 0;
 double packVoltageMax = 159.6;
 double packVoltage = 0.0;
 double packCurrent = 0.0;
@@ -21,10 +21,10 @@ double packAverageCurrent = 0.0;
 double lowCellVoltage = 0.0;
 double highCellVoltage = 0.0;
 double avgCellVoltage = 0.0;
-double highTemperature = 0.0;
-double lowTemperature = 0.0;
-double avgTemperature = 0.0;
-double internalTemperature = 0.0;
+int highTemperature = 0;
+int lowTemperature = 0;
+int avgTemperature = 0;
+int internalTemperature = 0;
 double MPPTInputVoltage = 0.0;
 double MPPTInputCurrent = 0.0;
 double MPPTOutputVoltage = 0.0;

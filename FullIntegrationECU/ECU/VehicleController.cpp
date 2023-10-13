@@ -1,28 +1,33 @@
 #include "VehicleController.h"
-#include "Serial_CAN_FD.h"
+#include "CANInitializer.h"
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "CANDecoder.h"
 #include "GlobalVariablesReceive.h"
 
 
+VehicleController::VehicleController() {
+  can_speed_20(50000); 
+  uart_init(9600);
+}
+
 
 void VehicleController::vehicleControlLoop(int gas_reverse_pot, int brake_pot) {
   int gas_N_reverse_potential = gas_reverse_pot;
   int brake_potential = brake_pot;
-  Serial.println(gas_N_reverse_potential);
+  //Serial.println(gas_N_reverse_potential);
   updateCurrentDrivingMode();
-  enterCruiseControl();
+  //enterCruiseControl();
   
   /*
   debugln("gas_N_reverse_potential before: " + String(gas_N_reverse_potential) + ", brake: " + String(brake_potential));
   */
 
-  applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
-  applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
+  //applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
+  //applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
 
   // Sends drive commands to vehicle
-  controlCar((long)gas_N_reverse_potential, (long)brake_potential);
+  controlCar((float)gas_N_reverse_potential, (float)brake_potential);
 
   last_gas_N_reverse_potential = gas_N_reverse_potential;
   last_brake_potential = brake_potential;
@@ -143,52 +148,56 @@ void VehicleController::brake(double brakePot) {
   
   Serial.print("BRAKE: ");
   Serial.println(brakePot);
-  can_send(0x501, 0, 0, 0, 0, BRAKE_ARR);
+  //can_send(0x501, 0, 0, 0, 0, BRAKE_ARR);
   //sendCAN(0x501, BRAKE_ARR);
 }
 
 void VehicleController::controlCar(float driveReversePot, float brakePot) {
   // Input potential will be between 0 - 1024
   //Serial.println("max:" + String(Max_gas_N_reverse_potential) + ", min: " + String(Min_gas_N_reverse_potential));
-  driveReversePot = mapFloat(driveReversePot, (float)Min_gas_N_reverse_potential, (float)Max_gas_N_reverse_potential, 0.0, 1.0);//max_gas_potential;
-  brakePot = mapFloat(brakePot, (float)Min_brake_potential, (float)Max_brake_potential, 0.0, 1.0);//max_brake_potential;
+  //driveReversePot = mapFloat(driveReversePot, (float)Min_gas_N_reverse_potential, (float)Max_gas_N_reverse_potential, 0, 1);//max_gas_potential;
+  //brakePot = mapFloat(brakePot, (float)Min_brake_potential, (float)Max_brake_potential, 0, 1);//max_brake_potential;
 
-  can_send(0x502, 0, 0, 0, 8, BUS_VOLTAGE);
+  can_send(0x69, 0, 0, 0, 8, BUS_VOLTAGE);
+  delay(2);
   //sendCAN(0x502, BUS_VOLTAGE); -- OLD WAY OF SENDING CAN
   /* ---------- NEUTRAL ----------- */
   if (isNeutral) {
+    can_send(0x70, 0, 0, 0, 8, BUS_VOLTAGE);
     //Serial.println("[controlCar()] IS NEUTRAL");
-    can_send(0x501, 0, 0, 0, 8, DRIVE_ARR);
+    //can_send(0x501, 0, 0, 0, 8, DRIVE_ARR);
     //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
   /* ------------ DRIVING ------------- */
   } else if (isDriving) {
     //Serial.println("[controlCar()] DRIVING, POT: " + String(driveReversePot));
-
+    can_send(0x71, 0, 0, 0, 8, BUS_VOLTAGE);
     // Drive potential to IEEE754 string (float point)
-    String ieee754 = IEEE754(driveReversePot);
+    //String ieee754 = IEEE754((double)driveReversePot);
 
     //Inserting ieee754 values in DRIVE_ARR
-    IEEE754ToArray(DRIVE_ARR, ieee754);
+    //IEEE754ToArray(DRIVE_ARR, ieee754);
 
     // Apply brake if driving = 0 & brake > 0
-    if(driveReversePot == 0 && brakePot > 0) brake(brakePot);
-    else can_send(0x501, 0, 0, 0, 8, DRIVE_ARR); //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
-    resetArrays();
+    //if(driveReversePot == 0 && brakePot > 0) brake((double)brakePot);
+    //else can_send(0x501, 0, 0, 0, 8, DRIVE_ARR); //sendCAN(0x501, DRIVE_ARR); -- OLD WAY OF SENDING CAN
+    //resetArrays();
     /* --------- REVERSING --------- */
   } else if (isReversing) {
+    can_send(0x72, 0, 0, 0, 8, BUS_VOLTAGE);
     //Serial.println("[controlCar()] IS REVERSING, POT: " + String(driveReversePot));
 
     // Drive potential to IEEE754 string (float point)
-    String ieee754 = IEEE754(driveReversePot);
+    //String ieee754 = IEEE754((double)driveReversePot);
 
     //Inserting ieee754 values in DRIVE_ARR
-    IEEE754ToArray(REVERSE_ARR, ieee754);
+    //IEEE754ToArray(REVERSE_ARR, ieee754);
 
     // Apply brake if reversing = 0 else drive
-    if(driveReversePot == 0 && brakePot > 0) brake(brakePot);
-    else can_send(0x501, 0, 0, 0, 8, REVERSE_ARR); // sendCAN(0x501, REVERSE_ARR); -- OLD WAY OF SENDING CAN
-    resetArrays();
+    //if(driveReversePot == 0 && brakePot > 0) brake((double)brakePot);
+    //else can_send(0x501, 0, 0, 0, 8, REVERSE_ARR); // sendCAN(0x501, REVERSE_ARR); -- OLD WAY OF SENDING CAN
+    //resetArrays();
   }
+  
 }
 
 /* +++++++++++ CRUISE CONTROL +++++++++++++*/

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "Serial_CAN_FD.h"
+#include "CANDecoder.h"
 #include "RAK811.h"
 
 
@@ -39,41 +40,6 @@ unsigned char __len = 0; // data length
 unsigned char __dta[8]; // data
 
 unsigned long lastTimeLORASent = millis();
-
-// Motor Controller
-double HeatsinkTemp = 0.0;
-double MotorTemp = 0.0;
-
-double BusCurrent = 0.0;
-double BusVoltage = 0.0;
-
-double MotorVelocity = 0.0;
-double VehicleVelocity = 0.0;
-
-// BMS (Orion 2)
-
-double PackVoltage = 0.0;
-double PackCurrent = 0.0;
-double PackAverageCurrent = 0.0;
-
-double PackSOH = 0.0;
-double PackSOC = 0.0;
-
-double LowCellVoltage = 0.0;
-double HighCellVoltage = 0.0;
-double AvgCellVoltage = 0.0;
-
-double HighTemperature = 0.0;
-double LowTemperature = 0.0;
-double AvgTemperature = 0.0;
-double InternalTemperature = 0.0;
-
-// MPPT (SEC-B175-7A TPEE)
-double MPPTInputVoltage = 0.0;
-double MPPTInputCurrent = 0.0;
-
-double MPPTOutputVoltage = 0.0;
-double MPPTOutputCurrent = 0.0;
 
 // Insulator (ISO165C-1 Bender)
 
@@ -116,123 +82,42 @@ void set_uart_LoRa(int current_LoRa_baud, int new_LoRa_baud)
   digitalWrite(RESET_PIN, HIGH);    // then high to enable
 }
 
-
-void update_data(String ID, String data)
-{
-
-  debugln("ID: " + ID + ", Data: " + data);
-
-  if(ID == "1025") //0x401 Status Information
-  {
-  }
-
-  if(ID == "1026") //0x402 Bus Measurement
-  {
-
-  }
-
-  if(ID == "1027") //0x403 Velocity Measurement
-  {
-    double motor_velocity = extractBytesToDecimal(data, 0, 4);
-    double vehicle_velocity = extractBytesToDecimal(data, 4, 4);
-    debugln();
-
-    debugln("Vehicle vel: " + String(vehicle_velocity));
-    debugln("Motor vel: " + String(motor_velocity));
-    
- 
-  }
-
-  if(ID == "1035") //0x40B MC Temperatures
-  {
-    double heat_sink_temp = extractBytesToDecimal(data, 0, 4);
-    double motor_temp = extractBytesToDecimal(data, 4, 4);
-
-    debugln("Heat-sink temp: " + String(heat_sink_temp));
-    debugln("Motor temp: " + String(motor_temp));
-  }
-
-  // ---------------- BMS ------------------------
-  if(ID == "1536")
-  {
-    PackCurrent = 0.1*extractDataMPPT(data, 0, 2);
-    PackVoltage = 0.1*extractDataMPPT(data, 2, 2);
-    PackAverageCurrent = 0.1*extractDataMPPT(data, 4, 2);
-    PackSOH = extractSingleByte(data, 6);
-    PackSOC = extractSingleByte(data, 7);
-
-    debugln("PackCurrent: " + String(PackCurrent));
-    debugln("PackVoltage: " + String(PackVoltage));
-    debugln("PackAverageCurrent: " + String(PackAverageCurrent));
-    debugln("PackSOH: " + String(PackSOH));
-    debugln("PackSOC: " + String(PackSOC));
-  }
-
-  if(ID == "1537") //BMS VOLTAGES
-  {
-    LowCellVoltage = 0.0001*extractDataMPPT(data, 0, 2);
-    HighCellVoltage = 0.0001*extractDataMPPT(data, 2, 2);
-    AvgCellVoltage = 0.0001*extractDataMPPT(data, 4, 2);
-
-    debugln("LowCellVoltage: " + String(LowCellVoltage));
-    debugln("HighCellVoltage: " + String(HighCellVoltage));
-    debugln("AvgCellVoltage: " + String(AvgCellVoltage));
-   
-  }
-
-  if(ID == "1538") //BMS TEMPERATURES
-  {
-    HighTemperature = extractSingleByte(data, 0);
-    LowTemperature = extractSingleByte(data, 1);
-    AvgTemperature = extractSingleByte(data, 2);
-    InternalTemperature = extractSingleByte(data, 3);
-
-    debugln("HighTemperature: " + String(HighTemperature));
-    debugln("LowTemperature: " + String(LowTemperature));
-    debugln("AvgTemperature: " + String(AvgTemperature));
-    debugln("InternalTemperature: " + String(InternalTemperature));
-  }
-  
-  // ----------------- MPPT ----------------------
-  if(ID == "512") 
-  { // InputVolt, InputCurrent, OutputVolt, OutputCurrent
-    MPPTInputVoltage = 0.01*extractDataMPPT(data, 0, 2);
-    MPPTInputCurrent = 0.0005*extractDataMPPT(data, 2, 2);
-    MPPTOutputVoltage = 0.01*extractDataMPPT(data, 4, 2);
-    MPPTOutputCurrent = 0.0005*extractDataMPPT(data, 6, 2);
-
-    /*
-    debugln("MPPT IN_VOLT: " + String(MPPTInputVoltage));
-    debugln("MPPT IN_CURRENT: " + String(MPPTInputVoltage));
-    debugln("MPPT OUT_VOLT: " + String(MPPTOutputVoltage));
-    debugln("MPPT OUT_CURRENT: " + String(MPPTOutputCurrent));
-    */
-  }
-
-  if(ID == "513") //
-  {// Errors
-
-  }
-
-
-  // ----- HÄR ÄR DET BUGGIGT, LORAn KRASCHAR NÄR DENNA KODEN KÖRS 
-  // ----- TROLIGEN P.GA noInterrupts() INTE FAKTISKT STOPPAR I2C INTERRUPT
-  // ----- FRÅN ECUn OCH NÄR DEN FÖRSÖKER SKICKA KOMMER EN INTERRUPT  
-  //noInterrupts();
-  //char loradata[] = "1337";
-  //RAKLoRa.rk_sendP2PData(1, "10", loradata);
-  //interrupts();
-
-  /* -------------------------------------------------------------- */
+String intToStringHex(const int integer) {
+  return String(integer, HEX);
 }
 
-String convertCANMsgToLoRa(const int can_id, const unsigned char* can_data, const unsigned int can_data_size) {
-  String newLoraMsg = String(can_id);
-  for (int i = 0; i < can_data_size; i++) {
-    newLoraMsg += String(can_data[i]);
+void sendLoraMsg(const int __id, const double __dta) {
+  String id = String(__id, HEX);
+  int integerPart = int(__dta);
+  int decimalPart = int((__dta - integerPart) * 10); // Assuming two decimal places
+  
+  String integerHex = String(integerPart, HEX);
+  String decimalHex = String(decimalPart, HEX);
+  while (id.length() < 2) {
+    id = "0" + id;
   }
 
-  return newLoraMsg;
+  // Pad the integer and decimal parts to ensure they are three and two characters long respectively
+  while (integerHex.length() < 3) {
+    integerHex = "0" + integerHex; // PAD INSTEAD WITH g AT INTEGER, LORA CANT SEND 0
+  }
+  while (decimalHex.length() < 1) {
+    decimalHex = "0 " + decimalHex; // PAD INSTEAD WITH n AT INTEGER, LORA CANT SEND 0
+  }
+  /*
+  * Max id representation: 255 (ff)
+  * Max integer representation: 4095 (fff)
+  * Max decimal representation: 15 (f)
+  */
+  
+  String loraData = id + integerHex + decimalHex;
+  //Serial.println("Int hex: " + integerHex);
+  //Serial.println("Int decimal: " + decimalHex);
+  //Serial.println("Lora data: " + loraData);
+  
+  // Combine the integer and decimal parts with a period (.) in between
+  RAKLoRa.rk_sendP2PData(1, "10", loraData.c_str());
+  delay(300);
 }
 
 
@@ -284,7 +169,98 @@ void setup()
 
 void loop() 
 {
+  static unsigned long lastTimeBusCurrent = millis();
+  static unsigned long lastTimeBusVoltage = millis();
 
+  static unsigned long lastTimeMotorVelocity = millis();
+  static unsigned long lastTimeVehicleVelocity = millis();
+
+  static unsigned long lastTimeHeatsinkTemp = millis();
+  static unsigned long lastTimeMotorTemp = millis();
+
+  static unsigned long lastTimePackCurrent = millis();
+  static unsigned long lastTimePackVoltage = millis();
+  static unsigned long lastTimePackAverageCurrent = millis();
+  static unsigned long lastTimePackSOH = millis();
+  static unsigned long lastTimePackSOC = millis();
+
+  static unsigned long lastTimeLowCellVoltage = millis();
+  static unsigned long lastTimeHighCellVoltage = millis();
+  static unsigned long lastTimeAvgCellVoltage = millis();
+
+  static unsigned long lastTimeHighTemperature = millis();
+  static unsigned long lastTimeLowTemperature = millis();
+  static unsigned long lastTimeAvgTemperature = millis();
+  static unsigned long lastTimeInternalTemperature = millis();
+
+  static unsigned long lastTimeMPPTInputVoltage = millis();
+  static unsigned long lastTimeMPPTInputCurrent = millis();
+  static unsigned long lastTimeMPPTOutputVoltage = millis();
+  static unsigned long lastTimeMPPTOutputCurrent = millis();
+  static unsigned long lastTimeMPPTOutputPower = millis();
+
+  /* BMS CAN MESSAGES
+  * 0x600 [PACK_CURRENT, PACK_OPEN_VOLTAGE, CURRENT_LIMIT_STATUS, AVG_CURRENT, LOW_CELL_VOLTAGE, HIGH_CELL_VOLTAGE, INPUT_SUPPLY_VOLTAGE, RELAY STATE]
+  * 0x601 [INTAKE_TEMP, INTERNAL_TEMP, HIGH_TEMP, LOW_TEMP, AVG_TEMP, PACK_AMP_HOURS, HIGH_THERMISTOR_ID, LOW_THERMISTOR_ID]
+  */
+  /* ALL THE ENCODINGS FOR 
+    encodings = {
+            #BMS_Pack
+            10: "PackCurrent",
+            11: "PackVoltage",
+            12: "PackStateOfHealth",
+            13: "AvgPackCurrent",
+            14: "PackStateOfCharge",
+            #BMS_Cell
+            15: "LowCellVoltage",
+            16: "HighCellVoltage",
+            17: "AvgCellVoltage",
+            #BMS_Failsafes
+            18: "VoltageFailsafeActive",
+            19: "CurrentFailsafeActive",
+            20: "RelayFailsafeActive",
+            21: "CellBalancingActive",
+            22: "ChangeinterlockFailsafeActive",
+            23: "ThermistorB_valueTableInvalid",
+            24: "InputPowerSupplyFailed",
+            #BMS_Temperatures
+            25: "HighestTemperature",
+            26: "LowestTemperature",
+            27: "AverageTemperature",
+            28: "InternalTemperature",
+
+            #MC_Temperatures
+            29: "HeatsinkTemperature",
+            30: "MotorTemperature",
+            #MC_CurrentVoltage
+            31: "BusCurrent",
+            32: "BusVoltage",
+            #MC_Velocity
+            33: "MotorVelocity",
+            34: "VehicleVelocity",
+            #MC_ErrorFlags
+            35: "MotorOverSpeed",
+            36: "DesaturationFault",
+            37: "RailUnderVoltage",
+            38: "ConfigReadError",
+            39: "WatchdogCausedLastReset",
+            40: "BadMotorPositionHallSequence",
+            41: "DCBusOverVoltage",
+            42: "SoftwareOverCurrent",
+            43: "HardwareOverCurrent",
+            #MC_LimitFlags
+            44: "IPMTemperatureOrMotorTemperature",
+            45: "BusVoltageLowerLimit",
+            46: "BusVoltageUpperLimit",
+            47: "BusCurrentLimit",
+            48: "Velocity",
+            49: "MotorCurrent",
+            50: "OutputVoltagePWM"
+        }
+  
+  */
+
+  /*
   if(read_can(&__id, &__ext, &__rtr, &__fdf, &__len, __dta))
     {
         Serial.print("GET DATA FROM: 0x");
@@ -299,38 +275,200 @@ void loop()
         Serial.println(__len);
         
 
+
         Serial.println(atoi(__dta));
-    }
 
-  //Serial.println("Doin loop");
-/*
-  if(Serial.available())
-  {
-    String input = Serial.readStringUntil(".");  // Read the data from the serial port
-    Serial.flush();
-    char data[input.length()+1];
-    Serial.println(input);
-   
-      // make sure that the new string is null terminated
-    data[input.length()] = '\0';
-     
-    for (int i = 0; i < input.length(); i++) 
-    {
-        data[i] = input[i];
-    }
+        // ------ Motor Controller ------ //
+      if (__id == 1025) {} // Status information
+      else if (__id == 1026) {
+        double busCurrent = extractBytesToDecimal(__dta, 0, 4);
+        double busVoltage = extractBytesToDecimal(__dta, 4, 4);
 
-    // data must > 10
-    RAKLoRa.rk_sendP2PData(1, "10", data);
-    digitalWrite(ERROR_PIN, HIGH);
-    Serial.println(data);
-  }
-  else
-  {
-    char data[] = "305069";
-    RAKLoRa.rk_sendP2PData(1, "10", data);
-    delay(200);
-  }
-  */
+        if (millis() - lastTimeBusCurrent > 10000) {
+          sendLoraMsg(31, busCurrent);
+          lastTimeBusCurrent = millis();
+        }
+        if (millis() - lastTimeBusVoltage > 10000) {
+          sendLoraMsg(32, busVoltage);
+          lastTimeBusVoltage = millis();
+        }
+      } // Bus measurement
+      else if (__id == 1027) { // Velocity Measurement
+        double motorVelocity = extractBytesToDecimal(__dta, 0, 4);
+        double vehicleVelocity = extractBytesToDecimal(__dta, 4, 4);
+
+        if (millis() - lastTimeMotorVelocity > 60000) { // motorVelocity @60 SECONDS
+          sendLoraMsg(33, motorVelocity);
+          lastTimeVehicleVelocity = millis();
+        }
+        if (millis() - lastTimeVehicleVelocity > 30000) { // vehicleVelocity @30 SECONDS
+          sendLoraMsg(34, vehicleVelocity);
+          lastTimeVehicleVelocity = millis();
+        }
+      }
+      else if (__id == 1035) {
+        double heatsinkTemp = extractBytesToDecimal(__dta, 0, 4);
+        double motorTemp = extractBytesToDecimal(__dta, 4, 4);
+
+        if (millis() - lastTimeHeatsinkTemp > 20000) { // heatsinkTemp @20 SECONDS
+          sendLoraMsg(29, heatsinkTemp);
+          lastTimeHeatsinkTemp = millis();
+        }
+        if (millis() - lastTimeMotorTemp > 10000) { // motorTemp @10 SECONDS
+          sendLoraMsg(30, motorTemp);
+          lastTimeMotorTemp = millis();
+        }
+      }
+      // ------------ Battery Management System ------------ //
+      else if (__id == 1536) {
+        double packCurrent = 0.1*extractDataNrBytes(__dta, 0, 2);
+        double packVoltage = 0.1*extractDataNrBytes(__dta, 2, 2);
+        double packAverageCurrent = 0.1*extractDataNrBytes(__dta, 4, 2);
+        double packSOH = extractSingleByte(__dta, 6);
+        double packSOC = extractSingleByte(__dta, 7);
+        
+
+        if (millis() - lastTimePackCurrent > 20000) { // packCurrent @20 SECONDS
+          sendLoraMsg(10, packCurrent);
+          lastTimePackCurrent = millis();
+        }
+        if (millis() - lastTimePackVoltage > 6000) { // packVoltage @6 SECONDS
+          sendLoraMsg(11, packVoltage);
+          lastTimePackVoltage = millis();
+        }
+        if (millis() - lastTimePackAverageCurrent > 30000) { // packAverageCurrent @30 SECONDS
+          sendLoraMsg(13, packAverageCurrent);
+          lastTimePackAverageCurrent = millis();
+        }
+        if (millis() - lastTimePackSOH > 120000) { // packSOH @120 SECONDS
+          sendLoraMsg(12, packSOH);
+          lastTimePackSOH = millis();
+        }
+
+      }
+      else if (__id == 1537) {
+        double lowCellVoltage = 0.0001*extractDataNrBytes(__dta, 0, 2);
+        double highCellVoltage = 0.0001*extractDataNrBytes(__dta, 2, 2);
+        double avgCellVoltage = 0.0001*extractDataNrBytes(__dta, 4, 2);
+
+        if (millis() - lastTimeLowCellVoltage > 8000) { // lowCellVoltage @8 SECONDS
+          sendLoraMsg(15, lowCellVoltage);
+          lastTimeLowCellVoltage = millis();
+        }
+        if (millis() - lastTimeHighCellVoltage > 8000) { // highCellVoltage @8 SECONDS
+          sendLoraMsg(16, highCellVoltage);
+          lastTimeHighCellVoltage = millis();
+        }
+        if (millis() - lastTimeAvgCellVoltage > 5000) { // avgCellVoltage @5 SECONDS
+          sendLoraMsg(17, avgCellVoltage);
+          lastTimeAvgCellVoltage = millis();
+        }
+      }
+      else if (__id == 1538) {
+        double highTemperature = extractSingleByte(__dta, 0);
+        double lowTemperature = extractSingleByte(__dta, 1);
+        double avgTemperature = extractSingleByte(__dta, 2);
+        double internalTemperature = extractSingleByte(__dta, 3);
+
+        if (millis() - lastTimeHighTemperature > 8000) { // highTemperature @8 SECONDS
+          sendLoraMsg(25, highTemperature);
+          lastTimeHighTemperature = millis();
+        }
+        if (millis() - lastTimeLowTemperature > 8000) { // lowTemperature @8 SECONDS
+          sendLoraMsg(26, lowTemperature);
+          lastTimeLowTemperature = millis();
+        }
+        if (millis() - lastTimeAvgTemperature > 5000) { // avgTemperature @5 SECONDS
+          sendLoraMsg(27, avgTemperature);
+          lastTimeAvgTemperature = millis();
+        }
+        if (millis() - lastTimeInternalTemperature > 5000) { // internalTemperature @5 SECONDS
+          sendLoraMsg(28, internalTemperature);
+          lastTimeInternalTemperature = millis();
+        }
+        
+      }
+      // ------------ MPPT ------------ //
+      else if (__id == 513) {
+        double MPPTInputVoltage = 0.01*extractDataNrBytes(__dta, 0, 2);
+        double MPPTInputCurrent = 0.0005*extractDataNrBytes(__dta, 2, 2);
+        double MPPTOutputVoltage = 0.01*extractDataNrBytes(__dta, 4, 2);
+        double MPPTOutputCurrent = 0.0005*extractDataNrBytes(__dta, 6, 2);
+        double MPPTOutputPower = MPPTOutputVoltage*MPPTOutputCurrent;
+
+        if (millis() - lastTimeMPPTInputVoltage > 8000) { // MPPTInputVoltage @8 SECONDS
+          sendLoraMsg(46, MPPTInputVoltage);
+          lastTimeMPPTInputVoltage = millis();
+        }
+        if (millis() - lastTimeMPPTInputCurrent > 8000) { // MPPTInputCurrent @8 SECONDS
+          sendLoraMsg(47, MPPTInputCurrent);
+          lastTimeMPPTInputCurrent = millis();
+        }
+        if (millis() - lastTimeMPPTOutputVoltage > 5000) { // MPPTOutputVoltage @5 SECONDS
+          sendLoraMsg(48, MPPTOutputVoltage);
+          lastTimeMPPTOutputVoltage = millis();
+        }
+        if (millis() - lastTimeMPPTOutputCurrent > 5000) { // MPPTOutputCurrent @5 SECONDS
+          sendLoraMsg(49, MPPTOutputCurrent);
+          lastTimeMPPTOutputCurrent = millis();
+        }
+        if (millis() - lastTimeMPPTOutputPower > 5000) { // MPPTOutputPower @5 SECONDS
+          sendLoraMsg(50, MPPTOutputPower);
+          lastTimeMPPTOutputPower = millis();
+        }
+      }
+
+    }
+    */
+
+  
+  if (Serial.available() > 0) {
+                    
+          // Read the incoming data as a string
+          String data = Serial.readStringUntil('\n');
+
+          // Split the data by space
+          int spaceIndex = data.indexOf(' ');
+          if (spaceIndex != -1) {
+            // Extract the ID and vehicle velocity as separate strings
+            String idStr = data.substring(0, spaceIndex);
+            String dataStr = data.substring(spaceIndex + 1);
+
+            // Convert the strings to integers
+            int id = idStr.toInt();
+            if (id == 1) { // MC - Vehicle Velocity
+              double vehicleVelocity = dataStr.toDouble();
+            }
+            else if (id == 2) { // MC - Heatsink Temp
+              double heatsinkTemp = dataStr.toDouble();
+              sendLoraMsg(2, heatsinkTemp);
+            }
+            else if (id == 3) { // MC - Motor Temp
+              double motorTemp = dataStr.toDouble();
+              sendLoraMsg(3, motorTemp);
+            }
+            else if (id == 4) { // HIGH_TEMP (THERMISTOR)
+              double highTemperature = dataStr.toDouble();
+              sendLoraMsg(4, highTemperature);
+            }
+            else if (id == 5) { // LOW_TEMP (THERMISTOR)
+              double lowTemperature = dataStr.toDouble();
+              sendLoraMsg(5, lowTemperature);
+            }
+
+            
+            //0x600 [PACK_CURRENT, PACK_OPEN_VOLTAGE, CURRENT_LIMIT_STATUS, AVG_CURRENT, LOW_CELL_VOLTAGE, HIGH_CELL_VOLTAGE, INPUT_SUPPLY_VOLTAGE, RELAY STATE]
+            //0x601 [INTAKE_TEMP, INTERNAL_TEMP, HIGH_TEMP, LOW_TEMP, AVG_TEMP, PACK_AMP_HOURS, HIGH_THERMISTOR_ID, LOW_THERMISTOR_ID]
+            ///Serial.println(vehicleVelocity);
+          }
+          Serial.flush()
+      }
+        
+        
+
+  //sendLoraMsg(5, 1337);
+  //RAKLoRa.rk_sendP2PData(1, "10", "abcd0f");
+  //RAKLoRa.rk_sendP2PData(1, "10", "AABB");
 }
 
 

@@ -6,7 +6,7 @@ import random
 class sqlConnection():
 
     def __init__(self) -> None:
-        self.conn = sqlite3.connect("C:/Users/jocke/OneDrive/Skrivbord/GitHub/LoRa-communication/LoRa_GUI/my.kv")
+        self.conn = sqlite3.connect("data")
         self.cursor = self.conn.cursor()
 
 

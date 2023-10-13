@@ -13,7 +13,7 @@ class VehicleController
         unsigned char REVERSE_ARR[8] = { 0, 0, 250, 196, 0, 0, 0, 0 }; // -2000 RPM
         unsigned char NEUTRAL_ARR[8] = { 0, 0, 250, 68, 0, 0, 0, 0 }; // 2000 RPM
         unsigned char BRAKE_ARR[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        unsigned char BUS_VOLTAGE[8] = { 0, 0, 0, 0, 0, 0, 128, 63};
+        unsigned char BUS_VOLTAGE[8] = { 0, 0, 0, 0, 0, 0, 128, 63}; // 00 00 80 3F
     
         int drivingMode = 0; /* 0 = Neutral, 1 = Drive, 2 = Reverse */
         bool inECO = false;
