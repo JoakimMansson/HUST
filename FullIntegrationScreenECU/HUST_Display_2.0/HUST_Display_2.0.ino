@@ -84,6 +84,7 @@ int cruise_control_velocity = 100;
 bool connection_established_to_RPI = false;
 
 
+
 /* ++++++++++++++++++++++ SCREEN GUI ++++++++++++++++++++++ */
 
 
@@ -124,6 +125,10 @@ void start_screen() {
     if (millis() - lastTimeSetPotentialsBlink > 1000) lastTimeSetPotentialsBlink = millis();
     Write_Text_Color(phost, 135, 215, 16, "SET GAS &  BRAKE", 255, 1, 1);
   }
+
+  if (halfLightActive) {
+    solar_cell_icon(phost, 1, 1, 255);
+  }
   
   Finish_Display(phost);
 }
@@ -136,43 +141,47 @@ void main_screen() {
 
   Start_Set_Display(phost);
 
+  //Write_Text(phost, 300, 125, 31, String(millis() - ECU.lastTimeBusCurrentReceived).c_str());
+  //Write_Text(phost, 300, 160, 31, String(busCurrent).c_str());
+
   // ++++++ Velocity ++++++ //
-  Write_Text(phost, 225, 80, 31, String(vehicleVelocity).c_str());
+  Write_Text(phost, 225, 125, 31, String(int(vehicleVelocity)).c_str());
   // ----- Velocity ----- //
 
   // ++++++ MC DATA ++++++ //
   char motor_temp[25];
   char heatsink_temp[25];
 
-  sprintf(motor_temp, "Motor T: %s", String(motorTemp).c_str());
-  sprintf(heatsink_temp, "Heatsink T: %s", String(heatsinkTemp).c_str());
+  sprintf(motor_temp, "Motor:%s", String(motorTemp).c_str());
+  sprintf(heatsink_temp, "Heatsink:%s", String(heatsinkTemp).c_str());
 
   Write_Text(phost, 350, 10, 30, "MC");
-  Write_Text(phost, 320, 50, 16, motor_temp);
-  Write_Text(phost, 320, 70, 16, heatsink_temp);
+  Write_Text(phost, 300, 50, 22, motor_temp);
+  Write_Text(phost, 300, 70, 22, heatsink_temp);
   // ----- MC DATA ----- //
 
 
   // ++++++ BMS DATA ++++++ //
+  char internal_temp[20];
   char high_temp[20];
   char low_temp[20];
-
-  sprintf(high_temp, "High T: %s", String(highTemperature).c_str());
-  sprintf(low_temp, "Low T: %s", String(lowTemperature).c_str());
+  sprintf(internal_temp, "BMS:%s", String(internalTemperature).c_str());
+  sprintf(high_temp, "High:%s", String(highTemperature).c_str());
+  //sprintf(low_temp, "Low:%s", String(lowTemperature).c_str());
 
   Write_Text(phost, 20, 10, 30, "BMS");
-  Write_Text(phost, 20, 50, 16, high_temp);
-  Write_Text(phost, 20, 70, 16, low_temp);
+  Write_Text(phost, 20, 50, 22, internal_temp);
+  Write_Text(phost, 20, 70, 22, high_temp);
+  //Write_Text(phost, 20, 90, 22, low_temp);
   // ----- BMS DATA ----- //
 
   // ++++++ WARNING TEXT FOR TEMP ++++++ //
-
   static unsigned long lastWarningTempTextBlink = 0;
-  bool tempWarning = highTemperature > 50 || motorTemp > 100 || heatsinkTemp > 60;
+  bool tempWarning = highTemperature > 50 || motorTemp > 100 || heatsinkTemp > 60 || internalTemperature > 80;
   if (millis() - lastWarningTempTextBlink > 300 && tempWarning) {
 
     if (millis() - lastWarningTempTextBlink > 1000) lastWarningTempTextBlink = millis();
-    Write_Text_Color(phost, 170, 135, 16, "CHECK TEMP", 255, 1, 1);
+    Write_Text_Color(phost, 165, 95, 16, "CHECK TEMP", 255, 1, 1);
   }
 
   // ----- WARNING TEXT FOR TEMP ----- //
@@ -187,14 +196,18 @@ void main_screen() {
 
 
     if (leftBlinkerActive) {
-      Write_Text_Color(phost, 200, 50, 16, "<-", 255, 192, 1);
+      Write_Text_Color(phost, 200, 50, 60, "<", 1, 1, 255);
     } 
     else if (rightBlinkerActive) {
-      Write_Text_Color(phost, 250, 50, 16, "->", 255, 192, 1);
+      Write_Text_Color(phost, 250, 50, 60, ">", 1, 1, 255);
     } 
     else if (warningLightsActive) {
-      Write_Text_Color(phost, 220, 50, 16, "<--->", 255, 192, 1);
+      Write_Text_Color(phost, 220, 50, 60, "!", 1, 1, 255);
     }
+  }
+
+  if (halfLightActive) {
+    solar_cell_icon(phost, 1, 1, 255);
   }
   // ----- UI FOR LIGHTS ----- //
 
@@ -215,7 +228,11 @@ void main_screen() {
 
   // ++++++ SHOWING ICONS ++++++ //
   if(ECU.inCruiseControl) {
-    cruise_control_icon(phost, vehicleVelocity);
+    //char cruise[20];
+    //sprintf(cruise, "Cruise:%s", String(int(ECU.velocityCruiseControl)).c_str());
+
+    Write_Text(phost, 320, 150, 24, "Cruise");
+    Write_Text(phost, 360, 175, 24, String(ECU.velocityCruiseControl).c_str());
   }
 
   if(highBeamActive) {
@@ -260,10 +277,10 @@ void checkGearModeButton() {
   if (drivingModePotential < 341) { 
     ECU.drivingMode = 0; // NEUTRAL
   }
-  else if(341 <= drivingModePotential && drivingModePotential < 682) { 
+  else if(341 <= drivingModePotential && drivingModePotential < 682 && !(ECU.drivingMode == 2 && abs(vehicleVelocity) > 1)) { 
     ECU.drivingMode = 1; // DRIVE
   }
-  else if (682 <= drivingModePotential) {
+  else if (drivingModePotential >= 682 && !(ECU.drivingMode == 1 && abs(vehicleVelocity) > 1)) {
     ECU.drivingMode = 2; // REVERSE
   }
 }
@@ -271,8 +288,12 @@ void checkGearModeButton() {
 void checkEnterCruise() {
   static unsigned long lastTimeCruiseButtonPress = millis();
   byte toggleCruiseButton = digitalRead(L2);
-  if(toggleCruiseButton == HIGH && millis() - lastTimeCruiseButtonPress > 500) {
+  bool isInDrive = ECU.drivingMode != 2 && ECU.drivingMode != 0;
+  if(toggleCruiseButton == HIGH && isInDrive) {
     if (millis() - lastTimeCruiseButtonPress > 500) ECU.inCruiseControl = !ECU.inCruiseControl;
+    
+    if (ECU.inCruiseControl) ECU.velocityCruiseControl = vehicleVelocity;
+    else ECU.velocityCruiseControl = 0;
     //Serial.println("[checkEnterCruise] Toggling cruise, inCruise: " + String(ECU.inCruiseControl));
     lastTimeCruiseButtonPress = millis();
   }
@@ -365,7 +386,9 @@ void checkHornButtonCommand() {
 void checkActivateHighBeam() {
   static bool highBeamOn = false;
   static unsigned long lastTimeHighBeamButtonPress = millis();
+  static unsigned long sumTimeHighBeamButtonPress = millis();
   byte highBeamButton = digitalRead(L3);
+
   if (highBeamButton == HIGH && millis() - lastTimeHighBeamButtonPress > 700) {
     highBeamOn = !highBeamOn;
     //Serial.println("[checkLightButtonCommands] Toggling left blinker");
@@ -374,16 +397,50 @@ void checkActivateHighBeam() {
     highBeamActive = highBeamOn;
     lastTimeHighBeamButtonPress = millis();
   }
+  
+  static unsigned long startTimeSumMillis = 0;
+  if (highBeamButton == HIGH && startTimeSumMillis == 0) {
+    startTimeSumMillis = millis();
+  }
+  else if (highBeamButton == LOW) {
+    startTimeSumMillis = 0;
+  }
+  else if (millis() - startTimeSumMillis > 3000) {
+    Serial.println("14 " + String(highBeamOn));
+    delay(20);
+  }
+
 }
 
 void checkActivateHalfLight() {
+  /*
   static unsigned long lastTimeHalfLightButtonPress = millis();
   byte halfLightButton = digitalRead(B4);
-  if (halfLightButton == HIGH && millis() - lastTimeHalfLightButtonPress > 500) {
+  if (halfLightButton == HIGH && millis() - lastTimeHalfLightButtonPress > 10000) {
     halfLightActive = !halfLightActive;
     Serial.println("15 " + String(halfLightActive));
     
     lastTimeHalfLightButtonPress = millis();
+  }
+  */
+
+  byte halfLightButton = digitalRead(B4);
+  static unsigned long startTimeSumMillis = 0;
+  static bool hasSwitched = false;
+  if (halfLightButton == HIGH && startTimeSumMillis == 0) {
+    startTimeSumMillis = millis();
+  }
+  else if (halfLightButton == LOW) {
+    startTimeSumMillis = 0;
+    hasSwitched = false;
+  }
+  else if (millis() - startTimeSumMillis > 3000) {
+    if (!hasSwitched) {
+      halfLightActive = !halfLightActive;
+      hasSwitched = true;
+    }
+    startTimeSumMillis = 0;
+    Serial.println("15 " + String(halfLightActive));
   }
   
 }
@@ -394,7 +451,7 @@ void checkButtonsIncreaseDecreaseCruiseSpeed() {
   static unsigned long lastTimeIncreaseButtonPress = millis();
   byte increaseButton = digitalRead(R2);
   if (increaseButton == HIGH && millis() - lastTimeIncreaseButtonPress > 1000) {
-    Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Increasing cruise speed");
+    //Serial.println("[checkButtonsIncreaseDecreaseCruiseSpeed] Increasing cruise speed");
     ECU.IncreaseCruiseSpeed();
     lastTimeIncreaseButtonPress = millis();
   }
@@ -427,6 +484,18 @@ bool potentialsSetCheck() {
 
 /* ------------------- CHECK IF POTENTIALS SET ----------------------- */
 
+void insertionSort(int arr[], int size) {
+  for (int i = 1; i < size; i++) {
+    int key = arr[i];
+    int j = i - 1;
+    while (j >= 0 && arr[j] > key) {
+      arr[j + 1] = arr[j];
+      j--;
+    }
+    arr[j + 1] = key;
+  }
+}
+
 void setup() {
   phost = &host;
   /* Init HW Hal */
@@ -449,7 +518,7 @@ void setup() {
   pinMode(B3, INPUT); // Warning lights (DIGITAL)
   pinMode(B4, INPUT); // NOW: Change half light (DIGITAL), BEFORE: Change driving mode ECO/RACE - (DIGITAL)
 
-  Serial.begin(9600);
+  Serial.begin(19200);
 
   unsigned long start_time = millis();
   while(millis() - start_time < 8000) {Serial.println("STARTING_SCREEN");}
@@ -462,6 +531,7 @@ void loop() {
   checkActivateHalfLight(); // Check if half light should toggle
   checkLightButtonCommands(); // Check if light buttons are pressed
   checkHornButtonCommand(); // Check if horn button is pressed
+  
 
   int meanGas = 0;
   int meanBrake = 0;
@@ -478,16 +548,12 @@ void loop() {
     i++;
   }
 
-  
+    if (potentialsSetCheck() || !inStartScreen) {
+      checkSwitchButtonMainStartScreen();
+    }
+
   meanGas = gas_buffer.get_mean();
   meanBrake = break_buffer.get_mean();
-
-  
-  /* TEST THIS POTENTIALS SET CHECK */
-  if (potentialsSetCheck() || !inStartScreen) {
-    checkSwitchButtonMainStartScreen();
-  }
-  
 
   if (inStartScreen) {
     
@@ -512,10 +578,12 @@ void loop() {
       ECU.Min_brake_potential = meanBrake;
     }
 
+
     start_screen(); // Show start_screen GUI
   }
   else {
   
+        checkEnterCruise();
         //checkEnterRaceOrECOButton(); // Check if race/eco button is pressed
         checkGearModeButton(); // Check if driving mode (neutral/reverse/drive) is rotated
         main_screen(); // Show main_screen GUI
@@ -525,7 +593,6 @@ void loop() {
           checkButtonsIncreaseDecreaseCruiseSpeed(); // Check if should increase/decrease cruise speed
         }
           
-
         static unsigned long lastSentPotential = millis();
         if (millis() - lastSentPotential >= 70) {
           ECU.vehicleControlLoop(meanGas, meanBrake);
@@ -533,19 +600,7 @@ void loop() {
         }
 
         if (Serial.available() > 0) {
-          /*
-          unsigned long startEmptyBufferTime = millis();
-          String latestData = ""; 
-          while (Serial.available() && millis() - startEmptyBufferTime < 20) {
-            char c = Serial.read();
-            if (c == '\n') {
-              latestData = "";  // Clear the buffer and start over for a new message
-            } else {
-              latestData += c;
-            }
-          }
-          */
-          
+
           // Read the incoming data as a string
           String data = Serial.readStringUntil('\n');
 
@@ -556,22 +611,34 @@ void loop() {
             String idStr = data.substring(0, spaceIndex);
             String dataStr = data.substring(spaceIndex + 1);
 
+
             // Convert the strings to integers
             int id = idStr.toInt();
-            if (id == 1) { // MC - Vehicle Velocity
-              vehicleVelocity = (int) dataStr.toDouble();
+            if (id == 0) {
+              ECU.inCruiseControl = false;
+              ECU.velocityCruiseControl = 0;
+            }
+            else if (id == 1) { // MC - Vehicle Velocity
+              ECU.lastVehicleVelocity = vehicleVelocity;
+              vehicleVelocity =  dataStr.toDouble();
             }
             else if (id == 2) { // MC - Heatsink Temp
-              heatsinkTemp = (int) dataStr.toDouble();
+              heatsinkTemp =  dataStr.toInt();
             }
             else if (id == 3) { // MC - Motor Temp
-              motorTemp = (int) dataStr.toDouble();
+              motorTemp =  dataStr.toInt();
             }
-            else if (id == 4) { // HIGH_TEMP (THERMISTOR)
-              highTemperature = (int) dataStr.toDouble();
+            else if (id == 4) { // INTERNAL TEMP (THERMISTOR)
+              internalTemperature =  dataStr.toInt();
             }
-            else if (id == 5) { // LOW_TEMP (THERMISTOR)
-              lowTemperature = (int) dataStr.toDouble();
+            else if (id == 5) { // HIGH TEMP (THERMISTOR)
+              highTemperature =  dataStr.toInt();
+            }
+            else if (id == 6) { // LOW TEMP (THERMISTOR)
+              lowTemperature = dataStr.toInt();
+            }
+            else if (id == 9) { // MC - BUS CURRENT
+               busCurrent = dataStr.toDouble();
             }
 
             

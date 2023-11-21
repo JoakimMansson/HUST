@@ -147,39 +147,49 @@ void loop()
   if (available)
   {
     String data = RAKSerial.readStringUntil("\n");
+    
     data = data.substring(0, data.length()-2);
-    data = extractDataAfter5thComma(data);
+    String hexValue = extractDataAfter5thComma(data);
+    //Serial.println(hexValue);
+
     
-    
-    //Serial.println(extractDataAfter5thComma(data));
-  }
+    // Extract the different parts of the hex string.
+    String idHex = hexValue.substring(0, 2);
+    String intHex = hexValue.substring(2, 5);
+    String decimalHex = hexValue.substring(5);
+  
 
+    // Convert each part to integers.
+    long id = strtol(idHex.c_str(), NULL, 16);
+    long integer = strtol(intHex.c_str(), NULL, 16);
+    long decimal = strtol(decimalHex.c_str(), NULL, 16);
 
-
-/*
-  if(RAKSerial.available())
-  {
-    String filtered_data = "";
-    String data = RAKSerial.readStringUntil("\n");
-
-    // Filters data "at+recv=0,0,-73,24,2,1029" -> filtered_data "1029"
-    for(int i = data.length()-1; i >= 0; i--)
-    {
-      String substring = data.substring(i-1,i);
-
-      if(substring.equals(","))
-      {
-        break;
-      }const int integer
-      else
-      {
-        filtered_data = substring + filtered_data;
-      }
+  
+    if (id == 2) {
+      Serial.println("Heatsink_temp: " + String(integer) + "." + String(decimal));
     }
-    filtered_data = remove_chars(filtered_data);
-    Serial.println(filtered_data);
-        
+    else if (id == 3) {
+      Serial.println("Motor_temp: " + String(integer) + "." + String(decimal));
+    }
+    else if (id == 4) {
+      Serial.println("Internal_temp: " + String(integer) + "." + String(decimal));
+    }
+    else if (id == 5) {
+      Serial.println("High_temp: " + String(integer) + "." + String(decimal));
+    }
+    else if (id == 6) {
+      Serial.println("Pack_Current: " + String(integer) + "." + String(decimal));
+    }
+    else if (id == 7) {
+      Serial.println("Pack_open_voltage: " + String(integer) + "." + String(decimal));
+    }
+    else if (id == 8) {
+      Serial.println("Low_cell_voltage: " + String(integer) + "." + String(decimal));
+    }
+    else if (id == 9) {
+      Serial.println("Bus_Current: " + String(integer) + "." + String(decimal));
+    }
+    
   }
-*/
 }
 

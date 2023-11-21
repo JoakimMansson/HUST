@@ -6,7 +6,6 @@
 #include "GlobalVariablesReceive.h"
 
 
-
 void VehicleController::vehicleControlLoop(int gas_reverse_pot, int brake_pot) {
   int gas_N_reverse_potential = gas_reverse_pot;
   int brake_potential = brake_pot;
@@ -19,18 +18,17 @@ void VehicleController::vehicleControlLoop(int gas_reverse_pot, int brake_pot) {
   */
 
   // EXIT CRUISE IF POTENTIAL > 100 is applied
-  //if (inCruiseControl && lastVehicleVelocity != 1/1337 && gas_reverse_pot - last_gas_N_reverse_potential > 100) {
-  //  inCruiseControl = false;
-  //}
-  //applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
-  //applyECOControl(gas_N_reverse_potential); // IF IN ECO UPDATE gas_N_reverse_potential
+  if (inCruiseControl && lastVehicleVelocity != 1/1337 && gas_reverse_pot - last_gas_N_reverse_potential > 30) {
+    inCruiseControl = false;
+  }
+  applyCruiseControl(gas_N_reverse_potential, brake_potential); // IF IN CRUISE CONTROL UPDATE gas_N_reverse_potential and brake_potential
 
   // Sends drive commands to vehicle
   controlCar((float)gas_N_reverse_potential, (float)brake_potential);
 
   last_gas_N_reverse_potential = gas_N_reverse_potential;
   last_brake_potential = brake_potential;
-  lastVehicleVelocity = vehicleVelocity; // Set last vehicle velocity to current velocity
+  //lastVehicleVelocity = vehicleVelocity; // Set last vehicle velocity to current velocity
   /*
   debugln("gas_N_reverse_potential after: " + String(gas_N_reverse_potential) + ", brake: " + String(brake_potential));
   debugln("Vehicle velocity: " + String(vehicleVelocity) + ", velocityCruiseControl: " + String(velocityCruiseControl));
@@ -40,13 +38,13 @@ void VehicleController::vehicleControlLoop(int gas_reverse_pot, int brake_pot) {
 }
 
 void VehicleController::decreaseCruiseSpeed() {
-  cruiseSpeedIncDec -= 2;
+  velocityCruiseControl -= 2;
+  if (velocityCruiseControl < 0) velocityCruiseControl = 0;
 }
 
 void VehicleController::IncreaseCruiseSpeed() {
-  cruiseSpeedIncDec += 2;
+  velocityCruiseControl += 2;
 }
-
 
 void VehicleController::IEEE754ToArray(unsigned char (&brake_drive_reverse)[8], String ieee754) {
     for (int i = 0; i < 4; i++) {
@@ -104,7 +102,6 @@ void VehicleController::resetArrays() {
   }
 }
 
-
 void VehicleController::updateCurrentDrivingMode() {
   if (drivingMode == 1) {
     isDriving = true;
@@ -132,74 +129,51 @@ void VehicleController::updateCurrentDrivingMode() {
 
 
 void VehicleController::brake(double brakePot) {
-  
-  /* FIX SO BUSCURRENT IS UPDATED MORE OFTEN!
-  if(busCurrent > maxBrakeBusCurrent || millis() - lastTimePointBusCurrentFetched > 500)
-  {
-    brakePot = 0;
-  }
-  */
-  
-  if (brakePot > 0.5) {brakePot = 0.5;} // LIMIT BRAKING TO 30%
-  //Serial.println("BrakePot: " + String(brakePot));
+
   String ieee754 = IEEE754(brakePot);
   IEEE754ToArray(BRAKE_ARR, ieee754);
   
   //Serial.print("BRAKE: ");
   //Serial.println(brakePot);
 
-  /*
-  char serialData[32]; // Assuming a maximum length
-  strcpy(serialData, "501");
-  for (int i = 0; i < 8; i++) {
-    char valueStr[10]; // Adjust the size as needed
-    itoa(BRAKE_ARR[i], valueStr, 10); // Convert int to string
-    strcat(serialData, " ");
-    strcat(serialData, valueStr);
-  }
-  Serial.println(serialData);
-  */
-
-  
   String serialData = "501";
   for (int i = 0; i < 8; i++) {
     serialData += " " + String(BRAKE_ARR[i]);
   }
   Serial.println(serialData);
   
-  //can_send(0x501, 0, 0, 0, 0, BRAKE_ARR);
-  //sendCAN(0x501, BRAKE_ARR);
 }
 
 void VehicleController::controlCar(float driveReversePot, float brakePot) {
-  // Input potential will be between 0 - 1024
-  //Serial.println("max:" + String(Max_gas_N_reverse_potential) + ", min: " + String(Min_gas_N_reverse_potential));
-  driveReversePot = mapFloat(driveReversePot, (float)Min_gas_N_reverse_potential, (float)Max_gas_N_reverse_potential, 0, 1) - 0.05;//max_gas_potential;
-  brakePot = mapFloat(brakePot, (float)Min_brake_potential, (float)Max_brake_potential, 0, 1) - 0.05;//max_brake_potential;
+  /* OFFSET FOR POTENTIOMETERS */
+  driveReversePot = driveReversePot - 5;
+  brakePot = brakePot - 5;
+
+  /* CHECK IF NEW VALUE IS < SET POTENTIALS IN START_SCREEN */
+  if (driveReversePot < Min_gas_N_reverse_potential) driveReversePot = Min_gas_N_reverse_potential;
+  if (brakePot < Min_brake_potential) brakePot = Min_brake_potential;
+
+  driveReversePot = mapFloat(driveReversePot, (float)Min_gas_N_reverse_potential, (float)Max_gas_N_reverse_potential, 0, 1) - 0.10;//max_gas_potential;
+  brakePot = mapFloat(brakePot, (float)Min_brake_potential, (float)Max_brake_potential, 0, 0.1870);//max_brake_potential;
 
   driveReversePot = ((int)(driveReversePot*100))/100.0;
   brakePot = ((int)(brakePot*100))/100.0;
+
+  if (0.3 < driveReversePot) driveReversePot += 0.02;
+  if (0.4 < driveReversePot) driveReversePot += 0.02;
+  if (0.5 < driveReversePot) driveReversePot += 0.02;
+  if (0.6 < driveReversePot) driveReversePot += 0.02;
+  if (0.7 < driveReversePot) driveReversePot += 0.02;
 
   if (driveReversePot < 0) driveReversePot = 0;
   if (driveReversePot > 1) driveReversePot = 1;
   if (brakePot < 0) brakePot = 0;
   if (brakePot > 1) brakePot = 1;
 
-  //Serial.println("Mapped brake: " + String(brakePot) + ", Mapped gas: " + String(driveReversePot));
 
-  /*--------- TEST ----------*/
-  /*
-  char serialData[32]; // Assuming a maximum length
-  strcpy(serialData, "502");
-  for (int i = 0; i < 8; i++) {
-    char valueStr[10]; // Adjust the size as needed
-    itoa(BUS_VOLTAGE[i], valueStr, 10); // Convert int to string
-    strcat(serialData, " ");
-    strcat(serialData, valueStr);
-  }
-  Serial.println(serialData);
-  */
-  
+  if (brakePot > 0.06) inCruiseControl = false; // Exit Cruise Control if electronic braking
+
+
   String serialData = "502";
   for (int i = 0; i < 8; i++) {
     serialData += " " + String(BUS_VOLTAGE[i]);
@@ -208,18 +182,6 @@ void VehicleController::controlCar(float driveReversePot, float brakePot) {
 
   /* ---------- NEUTRAL ----------- */
   if (isNeutral) {
-  
-  /*
-  char serialData[32]; // Assuming a maximum length
-  strcpy(serialData, "501");
-  for (int i = 0; i < 8; i++) {
-    char valueStr[10]; // Adjust the size as needed
-    itoa(NEUTRAL_ARR[i], valueStr, 10); // Convert int to string
-    strcat(serialData, " ");
-    strcat(serialData, valueStr);
-  }
-  Serial.println(serialData);
-  */
 
   String serialData = "501";
   for (int i = 0; i < 8; i++) {
@@ -232,23 +194,12 @@ void VehicleController::controlCar(float driveReversePot, float brakePot) {
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
-    IEEE754ToArray(DRIVE_ARR, ieee754);
+    //IEEE754ToArray(DRIVE_ARR, ieee754);
+    
         
-    if(driveReversePot == 0 && brakePot > 0 && vehicleVelocity >= 1) brake(brakePot);
+    if(driveReversePot == 0 && brakePot > 0 && abs(vehicleVelocity) >= 1) brake(brakePot);
     else {
 
-      /*
-      char serialData[32]; // Assuming a maximum length
-      strcpy(serialData, "501");
-      for (int i = 0; i < 8; i++) {
-        char valueStr[10]; // Adjust the size as needed
-        itoa(DRIVE_ARR[i], valueStr, 10); // Convert int to string
-        strcat(serialData, " ");
-        strcat(serialData, valueStr);
-      }
-      Serial.println(serialData);
-      */
-      
       //Inserting ieee754 values in DRIVE_ARR
       IEEE754ToArray(DRIVE_ARR, ieee754);
       String serialData = "501";
@@ -263,22 +214,11 @@ void VehicleController::controlCar(float driveReversePot, float brakePot) {
 
     // Drive potential to IEEE754 string (float point)
     String ieee754 = IEEE754(driveReversePot);
-    IEEE754ToArray(REVERSE_ARR, ieee754);
     
     if(driveReversePot == 0 && brakePot > 0 && abs(vehicleVelocity) >= 1) brake(brakePot);
     else {
-      /*
-      char serialData[32]; // Assuming a maximum length
-      strcpy(serialData, "501");
-      for (int i = 0; i < 8; i++) {
-        char valueStr[10]; // Adjust the size as needed
-        itoa(REVERSE_ARR[i], valueStr, 10); // Convert int to string
-        strcat(serialData, " ");
-        strcat(serialData, valueStr);
-      }
-      Serial.println(serialData);
-      */
 
+      IEEE754ToArray(REVERSE_ARR, ieee754);
       String serialData = "501";
       for (int i = 0; i < 8; i++) {
         serialData += " " + String(REVERSE_ARR[i]);
@@ -305,70 +245,71 @@ void VehicleController::enterCruiseControl() {
 }
 
 void VehicleController::applyCruiseControl(int& gas_N_reverse_potential, int& brake_potential) {
-  double gas_increment = 3; // CHANGE THIS FOR HARDER ACCELERATION
-  double brake_increment = 2;
+  const int gas_increment = 1; // CHANGE THIS FOR HARDER ACCELERATION
+  const int brake_increment = 2;
+  //static int cruiseBrakeApplied = 0; // Used for accelerating brake if speed does not decrease
+  static int cruiseGasApplied = Min_gas_N_reverse_potential; // Used for accelerating gas if speed does not increase
 
   // If cruise control is activated and mode is not in reverse
-  if(inCruiseControl && drivingMode != 0)
+  if(inCruiseControl && drivingMode == 1)
   {
-    // ---------------------------------------- TESTTTTTTTTTTTTTTTTTTTTTTTTTTTTT --------------------
-    int velocityIncreaseCruise = 2; // For how much to increase cruising speed when pressing increase/decrease
-    velocityCruiseControl += (cruiseSpeedIncDec-lastCruiseSpeedIncDec)*velocityIncreaseCruise;
-    if(velocityCruiseControl < 0){velocityCruiseControl = 0;} // if velocity 
-
-
     // Compute the error between desired and current speed
-    float velocityError = velocityCruiseControl - vehicleVelocity; // SetVelocity - CurrentVelocity
-    float velocityErrorOffset = 0.1;
-    float velocityBrakeErrorOffset = -15;
+    int velocityError = velocityCruiseControl - vehicleVelocity; // SetVelocity - CurrentVelocity
+    const int velocityErrorOffset = 0.1;
+    const int velocityTopMaxErrorOffset = -1;
 
     if(velocityCruiseControl == 0)
     {
-      gas_N_reverse_potential = 0;
+      gas_N_reverse_potential = Min_gas_N_reverse_potential;
       return;
     }
 
     // If the speed is too low, apply more gas
-    if(velocityError > velocityErrorOffset && millis() - lastTimePointVelocityFetched < 1000)
+    if(velocityError >= velocityErrorOffset)
     {
-      cruiseBrakeApplied = 0.0;
-      brake_potential = 0.0;
-      cruiseGasApplied += gas_increment;
-      gas_N_reverse_potential = cruiseGasApplied;
+      // If car is accelerating dont increase the gas potential more  
+      if (vehicleVelocity - lastVehicleVelocity < 0.1) {
+        cruiseGasApplied += gas_increment;
+        gas_N_reverse_potential = cruiseGasApplied;
+      }
+      
     }
+    
+    // -- BRAKE DISABLED IN CRUISE CONTROL --
     // If the speed is too high, apply more brake
-    else if(velocityError < velocityBrakeErrorOffset && millis() - lastTimePointVelocityFetched < 1000)
+    else if(velocityError < velocityTopMaxErrorOffset)
     {
-      cruiseGasApplied = 0.0;
-      gas_N_reverse_potential = 0.0;
-      cruiseBrakeApplied += brake_increment;
-      brake_potential = cruiseBrakeApplied;
+      cruiseGasApplied = Min_gas_N_reverse_potential;
+      gas_N_reverse_potential = Min_gas_N_reverse_potential;
     }
+    /*
     // If the speed is within a tolerance range, maintain the current speed
     else
     {
-      float velocityGapError = vehicleVelocity - lastVehicleVelocity;
-      cruiseGasApplied = 0.0;
-      cruiseBrakeApplied = 0.0;
-      brake_potential = 0;
-
-      if(velocityGapError > 0.02)
+      int cruiseVelocityGapError = vehicleVelocity - velocityCruiseControl;
+      int lastVelocityGapError = vehicleVelocity - lastVehicleVelocity;
+      //cruiseGasApplied = Min_gas_N_reverse_potential;
+      //brake_potential = 0;
+      
+      if (cruiseVelocityGapError >= 2)
       {
-        potentialCruiseControl -= 1;
-        gas_N_reverse_potential = potentialCruiseControl;
+        if (lastVelocityGapError >= 0) {
+          cruiseGasApplied -= 1;
+          gas_N_reverse_potential = cruiseGasApplied;
+        }
+        
       }
-      else if(velocityGapError < (-0.02))
+      else if (lastVelocityGapError < 0 && velocityCruiseControl < vehicleVelocity && vehicleVelocity < velocityCruiseControl + 2)
       {
-        potentialCruiseControl += 1;
-        gas_N_reverse_potential = potentialCruiseControl;
+        cruiseGasApplied += 1;
+        gas_N_reverse_potential = cruiseGasApplied;
       }
       else
       {
-        gas_N_reverse_potential = potentialCruiseControl;
+        gas_N_reverse_potential = cruiseGasApplied;
       }
-      
-    
     }
+    */
 
     // Set the gas and brake potentials based on the applied values
     //gas_N_reverse_potential = potentialCruiseControl + cruiseGasApplied;

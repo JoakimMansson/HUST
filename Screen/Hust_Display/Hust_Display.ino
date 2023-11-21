@@ -434,7 +434,7 @@ void loop() {
   HighTemperature
   LowTemperature
   AvgTemperature
-  InternalTemperature*/
+  InternalTemperature*/mc_error_flag
     
   if(HighTemperature >= 60 || InternalTemperature >= 60 || HighTemperature - LowTemperature >= 20) {
     battery_error_flag = true;

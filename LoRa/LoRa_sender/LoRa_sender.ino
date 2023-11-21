@@ -117,7 +117,7 @@ void sendLoraMsg(const int __id, const double __dta) {
   
   // Combine the integer and decimal parts with a period (.) in between
   RAKLoRa.rk_sendP2PData(1, "10", loraData.c_str());
-  delay(300);
+  delay(50);
 }
 
 
@@ -440,20 +440,36 @@ void loop()
               double vehicleVelocity = dataStr.toDouble();
             }
             else if (id == 2) { // MC - Heatsink Temp
-              double heatsinkTemp = dataStr.toDouble();
+              int heatsinkTemp = dataStr.toInt();
               sendLoraMsg(2, heatsinkTemp);
             }
             else if (id == 3) { // MC - Motor Temp
-              double motorTemp = dataStr.toDouble();
+              int motorTemp = dataStr.toInt();
               sendLoraMsg(3, motorTemp);
             }
-            else if (id == 4) { // HIGH_TEMP (THERMISTOR)
-              double highTemperature = dataStr.toDouble();
-              sendLoraMsg(4, highTemperature);
+            else if (id == 4) { 
+              int internalTemperature = dataStr.toInt();
+              sendLoraMsg(5, internalTemperature);
             }
-            else if (id == 5) { // LOW_TEMP (THERMISTOR)
-              double lowTemperature = dataStr.toDouble();
-              sendLoraMsg(5, lowTemperature);
+            else if (id == 5) { // HIGH_TEMP (THERMISTOR)
+              int highTemperature = dataStr.toInt();
+              sendLoraMsg(5, highTemperature);
+            }
+            else if (id == 6) { // LOW_TEMP (THERMISTOR)
+              int packCurrent = dataStr.toInt();
+              sendLoraMsg(6, packCurrent);
+            }
+            else if (id == 7) {
+              int packOpenVoltage = dataStr.toInt();
+              sendLoraMsg(7, packOpenVoltage);
+            }
+            else if (id == 8) {
+              double lowCellVoltage = dataStr.toDouble();
+              sendLoraMsg(8, lowCellVoltage);
+            }
+            else if (id == 9) {
+              int busCurrent = dataStr.toInt();
+              sendLoraMsg(9, busCurrent);
             }
 
             
@@ -461,7 +477,6 @@ void loop()
             //0x601 [INTAKE_TEMP, INTERNAL_TEMP, HIGH_TEMP, LOW_TEMP, AVG_TEMP, PACK_AMP_HOURS, HIGH_THERMISTOR_ID, LOW_THERMISTOR_ID]
             ///Serial.println(vehicleVelocity);
           }
-          Serial.flush()
       }
         
         

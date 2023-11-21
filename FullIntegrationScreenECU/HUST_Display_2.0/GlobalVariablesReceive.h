@@ -10,7 +10,7 @@ extern int motorTemp;
 extern double busCurrent;
 extern double busVoltage;
 extern double motorVelocity;
-extern int vehicleVelocity;
+extern double vehicleVelocity;
 extern double packVoltageMax;
 extern double packVoltage;
 extern double packCurrent;

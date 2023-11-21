@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include "GlobalVariablesReceive.h"
+#include <PID_v1.h>
 
 
 
@@ -18,6 +19,9 @@ class VehicleController
         int drivingMode = 0; /* 0 = Neutral, 1 = Drive, 2 = Reverse */
         bool inECO = false;
         bool inCruiseControl = false;
+        int velocityCruiseControl = 0.0; // Set at the initiation of cruise
+        double lastVehicleVelocity = 0.0; // Previous iteration of vehicle velocity
+
 
     /* 
             *IMPORTANT* 
@@ -52,13 +56,9 @@ class VehicleController
         
         bool lastInCruiseControl = false;
         float potentialCruiseControl = 0.0; // Regulated when in limits of set cruise velocity
-        float velocityCruiseControl = 0.0; // Set at the initiation of cruise
-        float cruiseBrakeApplied = 0.0; // Used for accelerating brake if speed does not decrease
-        float cruiseGasApplied = 0.0; // Used for accelerating gas if speed does not increase
         int cruiseSpeedIncDec = 100;
         int lastCruiseSpeedIncDec = 100;
 
-        double lastVehicleVelocity = 0.0; // Previous iteration of vehicle velocity
 
         void IEEE754ToArray(unsigned char (&brake_drive_reverse)[8], String ieee754);
         String IEEE754(const double potential);

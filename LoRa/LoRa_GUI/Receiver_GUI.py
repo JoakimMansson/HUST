@@ -40,7 +40,7 @@ from kivy.metrics import dp
 import matplotlib.pyplot as plt
 
 from USB import USB
-from LoRa_Converter import parse_hex_value
+from LoRa_Converter import *
 
 DB = DBsqllite()
 
@@ -127,7 +127,6 @@ class MainScreen(Screen):
 
     def read_LoRa_data(self):
         #data = self.USB.get_DIGITS_USB()
-        #self.packCurrent.text = "Bajs"
         if self.waiting_for_lora_connection:
             try:
                 serial_data = self.USB.get_filtered_serial()
@@ -145,31 +144,73 @@ class MainScreen(Screen):
             # Necessary for try & except since
             # the serial read will include blank spaces.
             try:
-                id_part, integer_part, decimal_part = parse_hex_value(serial_data)
-                table = encodings[id_part]
-                table_id = table[0].lower() + table[1:]
-                print(f"TableId: {table_id}, Digit: {integer_part}.{decimal_part}")
-                #print("Table: ", table, " ,Data: ", integer_part, decimal_digit)
-                
-                if self.within_limits_float(id_part):
-                    #exec("self." + str(table_id) + ".text =" + table + ": " + str(integer_part) + "." + str(decimal_digit))
-                    value = str(integer_part) + "." + str(decimal_part)
-                    exec("self."+table_id+".text ='" + table + ": " + value + "'")
+                hex_value = self.USB.ser.readline()
+                id_hex = hex_value[0:2]
+                int_hex = hex_value[2:5]
+                decimal_hex = hex_value[5:]
 
-                    #exec("self." + id + ".color =" + str(color))
-                else:
-                    if integer_part == 1:
-                        color = (176/255, 18/255, 0/255)
-                        exec("self."+table_id+".color= color")
+                id = int(id_hex, 16)
+                integer = int(int_hex, 16)
+                decimal = int(decimal_hex, 16)
+                encoding_id = None
+
+                if id == 2:
+                    encoding_id = 29
+                    print("Heatsink_temp: " + str(integer) + "." + str(decimal))
+                elif id == 3:
+                    encoding_id = 30
+                    print("Motor_temp: " + str(integer) + "." + str(decimal))
+                elif id == 4:
+                    encoding_id = 28
+                    print("Internal_temp: " + str(integer) + "." + str(decimal))
+                elif id == 5:
+                    encoding_id = 25
+                    print("High_temp: " + str(integer) + "." + str(decimal))
+                elif id == 6:
+                    encoding_id = 10
+                    print("Pack_Current: " + str(integer) + "." + str(decimal))
+                elif id == 7:
+                    encoding_id = 11
+                    print("Pack_open_voltage: " + str(integer) + "." + str(decimal))
+                elif id == 8:
+                    encoding_id = 15
+                    print("Low_cell_voltage: " + str(integer) + "." + str(decimal))
+                elif id == 9:
+                    encoding_id = 31
+                    print("Bus_Current: " + str(integer) + "." + str(decimal))
+
+
+                if encoding_id is not None:
+
+                    table = encodings[encoding_id]
+                    table_id = table[0].lower() + table[1:]
+                #print(f"TableId: {table_id}, Digit: {integer_part}.{decimal_part}")
+                #print("Table: ", table, " ,Data: ", integer_part, decimal_digit)
+
+                    if current_theme_light:
+                        color = (0,0,0)
+                    else: 
+                        color = (1,1,1)
+                    
+                    if self.within_limits_float(encoding_id):
+                        #exec("self." + str(table_id) + ".text =" + str(table) + ": " + str(integer) + "." + str(decimal))
+                        value = str(integer) + "." + str(decimal)
+                        exec("self." + str(table_id) + ".text ='" + str(table) + ": " + str(value) + "'")
+
+                        #exec("self." + str(id) + ".color =" + str(color))
                     else:
-                        color = (0/255, 109/255, 176/255)
-                        exec("self."+table_id+".color= color")
+                        if integer == 1:
+                            color = (176/255, 18/255, 0/255)
+                            exec("self."+table_id+".color= color")
+                        else:
+                            color = (0/255, 109/255, 176/255)
+                            exec("self."+table_id+".color= color")
                 
                 
                 #Update table text <------
                 #print(f"ID: {id_part}, Integer: {integer_part},{decimal_digit}")
             except Exception as e:
-                pass
+                print(e)
         
         
 

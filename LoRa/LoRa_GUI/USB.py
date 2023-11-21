@@ -2,7 +2,6 @@ import serial
 from serial.tools import list_ports
 import time
 import re
-from LoRa_Converter import parse_hex_value
 
 
 
@@ -91,6 +90,7 @@ class USB():
     def send_string(self, data: str):
         data_bytes = data.encode('utf-8')
         self.ser.write(data_bytes)
+
     
 
 if __name__ == '__main__':
